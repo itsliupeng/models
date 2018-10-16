@@ -455,6 +455,11 @@ def loss(logits, labels, batch_size=None):
       labels: Labels from distorted_inputs or inputs(). 1-D tensor
               of shape [batch_size]
     """
+
+    tf.Print("###################### liupeng debug ######################")
+    tf.Print(logits.shape)
+    tf.Print(labels.shape)
+
     if not batch_size:
         batch_size = FLAGS.batch_size
 
