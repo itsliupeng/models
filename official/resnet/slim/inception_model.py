@@ -441,8 +441,9 @@ def _activation_summaries(endpoints):
         for act in endpoints.values():
             _activation_summary(act)
 
+FLAGS = tf.app.flags.FLAGS
 
-def loss(logits, labels):
+def loss(logits, labels, batch_size=None):
     """Adds all losses for the model.
 
     Note the final loss is not returned. Instead, the list of losses are collected
@@ -454,7 +455,8 @@ def loss(logits, labels):
       labels: Labels from distorted_inputs or inputs(). 1-D tensor
               of shape [batch_size]
     """
-    batch_size = logits[0].shape[0]
+    if not batch_size:
+        batch_size = FLAGS.batch_size
 
     # Reshape the labels into a dense Tensor of
     # shape [FLAGS.batch_size, num_classes].
