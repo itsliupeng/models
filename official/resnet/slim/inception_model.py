@@ -441,9 +441,8 @@ def _activation_summaries(endpoints):
         for act in endpoints.values():
             _activation_summary(act)
 
-FLAGS = tf.app.flags.FLAGS
 
-def loss(logits, labels, batch_size=None):
+def loss(logits, labels):
     """Adds all losses for the model.
 
     Note the final loss is not returned. Instead, the list of losses are collected
@@ -459,28 +458,11 @@ def loss(logits, labels, batch_size=None):
     print('"###################### liupeng debug ######################"')
     print(logits[0].shape, logits[1].shape, labels.shape)
 
-    if not batch_size:
-        batch_size = FLAGS.batch_size
+    LOSSES_COLLECTION = '_losses'
 
-    # Reshape the labels into a dense Tensor of
-    # shape [FLAGS.batch_size, num_classes].
-    sparse_labels = tf.reshape(labels, [batch_size, 1])
-    indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
-    concated = tf.concat(axis=1, values=[indices, sparse_labels])
-    num_classes = logits[0].get_shape()[-1].value
-    dense_labels = tf.sparse_to_dense(concated,
-                                      [batch_size, num_classes],
-                                      1.0, 0.0)
+    loss0 = tf.losses.sparse_softmax_cross_entropy(labels, logits[0], weights=1.0)
+    tf.add_to_collection(LOSSES_COLLECTION, loss0)
 
-    # Cross entropy loss for the main softmax prediction.
-    losses.cross_entropy_loss(logits[0],
-                              dense_labels,
-                              label_smoothing=0.1,
-                              weight=1.0)
+    loss1 = tf.losses.sparse_softmax_cross_entropy(labels, logits[1], weights=0.4)
+    tf.add_to_collection(LOSSES_COLLECTION, loss1)
 
-    # Cross entropy loss for the auxiliary softmax head.
-    losses.cross_entropy_loss(logits[1],
-                              dense_labels,
-                              label_smoothing=0.1,
-                              weight=0.4,
-                              scope='aux_loss')

@@ -177,4 +177,5 @@ def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
                                       name='loss_weight')
         loss = tf.multiply(weight, tf.reduce_mean(cross_entropy), name='value')
         tf.add_to_collection(LOSSES_COLLECTION, loss)
+
         return loss
