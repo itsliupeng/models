@@ -458,11 +458,5 @@ def loss(logits, labels):
     print('"###################### liupeng debug ######################"')
     print(logits[0].shape, logits[1].shape, labels.shape)
 
-    LOSSES_COLLECTION = '_losses'
 
-    loss0 = tf.losses.sparse_softmax_cross_entropy(labels, logits[0], weights=1.0)
-    tf.add_to_collection(LOSSES_COLLECTION, loss0)
-
-    loss1 = tf.losses.sparse_softmax_cross_entropy(labels, logits[1], weights=0.4)
-    tf.add_to_collection(LOSSES_COLLECTION, loss1)
 

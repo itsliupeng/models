@@ -296,17 +296,12 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
 
-    inception_model.loss([logits, aux_logits], labels)
-    losses = tf.get_collection(inception_losses.LOSSES_COLLECTION)
+    tf.losses.sparse_softmax_cross_entropy(labels, logits, weights=1.0)
+    tf.losses.sparse_softmax_cross_entropy(labels, aux_logits, weights=0.4)
 
+    losses = tf.get_collection(tf.GraphKeys.LOSSES)
     regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
-
-    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-    loss_averages_op = loss_averages.apply(losses + [total_loss])
-
-    with tf.control_dependencies([loss_averages_op]):
-        total_loss = tf.identity(total_loss)
 
     tf.summary.scalar('l2_loss', total_loss)
 
