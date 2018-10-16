@@ -33,15 +33,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
+import tensorflow as tf
+from skip_thoughts import configuration
+from skip_thoughts import encoder_manager
 from skipthoughts import eval_classification
 from skipthoughts import eval_msrp
 from skipthoughts import eval_sick
 from skipthoughts import eval_trec
-import tensorflow as tf
-
-from skip_thoughts import configuration
-from skip_thoughts import encoder_manager
 
 FLAGS = tf.flags.FLAGS
 
@@ -78,40 +76,40 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 
 def main(unused_argv):
-  if not FLAGS.data_dir:
-    raise ValueError("--data_dir is required.")
+    if not FLAGS.data_dir:
+        raise ValueError("--data_dir is required.")
 
-  encoder = encoder_manager.EncoderManager()
+    encoder = encoder_manager.EncoderManager()
 
-  # Maybe load unidirectional encoder.
-  if FLAGS.uni_checkpoint_path:
-    print("Loading unidirectional model...")
-    uni_config = configuration.model_config()
-    encoder.load_model(uni_config, FLAGS.uni_vocab_file,
-                       FLAGS.uni_embeddings_file, FLAGS.uni_checkpoint_path)
+    # Maybe load unidirectional encoder.
+    if FLAGS.uni_checkpoint_path:
+        print("Loading unidirectional model...")
+        uni_config = configuration.model_config()
+        encoder.load_model(uni_config, FLAGS.uni_vocab_file,
+                           FLAGS.uni_embeddings_file, FLAGS.uni_checkpoint_path)
 
-  # Maybe load bidirectional encoder.
-  if FLAGS.bi_checkpoint_path:
-    print("Loading bidirectional model...")
-    bi_config = configuration.model_config(bidirectional_encoder=True)
-    encoder.load_model(bi_config, FLAGS.bi_vocab_file, FLAGS.bi_embeddings_file,
-                       FLAGS.bi_checkpoint_path)
+    # Maybe load bidirectional encoder.
+    if FLAGS.bi_checkpoint_path:
+        print("Loading bidirectional model...")
+        bi_config = configuration.model_config(bidirectional_encoder=True)
+        encoder.load_model(bi_config, FLAGS.bi_vocab_file, FLAGS.bi_embeddings_file,
+                           FLAGS.bi_checkpoint_path)
 
-  if FLAGS.eval_task in ["MR", "CR", "SUBJ", "MPQA"]:
-    eval_classification.eval_nested_kfold(
-        encoder, FLAGS.eval_task, FLAGS.data_dir, use_nb=False)
-  elif FLAGS.eval_task == "SICK":
-    eval_sick.evaluate(encoder, evaltest=True, loc=FLAGS.data_dir)
-  elif FLAGS.eval_task == "MSRP":
-    eval_msrp.evaluate(
-        encoder, evalcv=True, evaltest=True, use_feats=True, loc=FLAGS.data_dir)
-  elif FLAGS.eval_task == "TREC":
-    eval_trec.evaluate(encoder, evalcv=True, evaltest=True, loc=FLAGS.data_dir)
-  else:
-    raise ValueError("Unrecognized eval_task: %s" % FLAGS.eval_task)
+    if FLAGS.eval_task in ["MR", "CR", "SUBJ", "MPQA"]:
+        eval_classification.eval_nested_kfold(
+            encoder, FLAGS.eval_task, FLAGS.data_dir, use_nb=False)
+    elif FLAGS.eval_task == "SICK":
+        eval_sick.evaluate(encoder, evaltest=True, loc=FLAGS.data_dir)
+    elif FLAGS.eval_task == "MSRP":
+        eval_msrp.evaluate(
+            encoder, evalcv=True, evaltest=True, use_feats=True, loc=FLAGS.data_dir)
+    elif FLAGS.eval_task == "TREC":
+        eval_trec.evaluate(encoder, evalcv=True, evaltest=True, loc=FLAGS.data_dir)
+    else:
+        raise ValueError("Unrecognized eval_task: %s" % FLAGS.eval_task)
 
-  encoder.close()
+    encoder.close()
 
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()

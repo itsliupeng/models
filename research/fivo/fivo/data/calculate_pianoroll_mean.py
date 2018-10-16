@@ -25,11 +25,9 @@ from __future__ import division
 from __future__ import print_function
 
 import pickle
+
 import numpy as np
-
 import tensorflow as tf
-
-
 from datasets import sparse_pianoroll_to_dense
 
 tf.app.flags.DEFINE_string('in_file', None,
@@ -47,19 +45,19 @@ NUM_NOTES = MAX_NOTE - MIN_NOTE + 1
 
 
 def main(unused_argv):
-  if FLAGS.out_file is None:
-    FLAGS.out_file = FLAGS.in_file
-  with tf.gfile.Open(FLAGS.in_file, 'r') as f:
-    pianorolls = pickle.load(f)
-  dense_pianorolls = [sparse_pianoroll_to_dense(p, MIN_NOTE, NUM_NOTES)[0]
-                      for p in pianorolls['train']]
-  # Concatenate all elements along the time axis.
-  concatenated = np.concatenate(dense_pianorolls, axis=0)
-  mean = np.mean(concatenated, axis=0)
-  pianorolls['train_mean'] = mean
-  # Write out the whole pickle file, including the train mean.
-  pickle.dump(pianorolls, open(FLAGS.out_file, 'wb'))
+    if FLAGS.out_file is None:
+        FLAGS.out_file = FLAGS.in_file
+    with tf.gfile.Open(FLAGS.in_file, 'r') as f:
+        pianorolls = pickle.load(f)
+    dense_pianorolls = [sparse_pianoroll_to_dense(p, MIN_NOTE, NUM_NOTES)[0]
+                        for p in pianorolls['train']]
+    # Concatenate all elements along the time axis.
+    concatenated = np.concatenate(dense_pianorolls, axis=0)
+    mean = np.mean(concatenated, axis=0)
+    pianorolls['train_mean'] = mean
+    # Write out the whole pickle file, including the train mean.
+    pickle.dump(pianorolls, open(FLAGS.out_file, 'wb'))
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()

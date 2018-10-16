@@ -19,12 +19,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import tensorflow as tf
+from absl import logging
 
 try:
-  icp_op_module = tf.load_op_library('./ops/icp_op.so')
-  icp = icp_op_module.icp
+    icp_op_module = tf.load_op_library('./ops/icp_op.so')
+    icp = icp_op_module.icp
 except Exception:  # pylint: disable=broad-except
-  logging.error('Could not load object file for ICP op.')
-  icp = None
+    logging.error('Could not load object file for ICP op.')
+    icp = None

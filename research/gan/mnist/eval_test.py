@@ -18,23 +18,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
-
+import eval  # pylint:disable=redefined-builtin
 from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
-import eval  # pylint:disable=redefined-builtin
 
 
 class EvalTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('RealData', True),
-      ('GeneratedData', False))
-  def test_build_graph(self, eval_real_images):
-    flags.FLAGS.eval_real_images = eval_real_images
-    eval.main(None, run_eval_loop=False)
+    @parameterized.named_parameters(
+        ('RealData', True),
+        ('GeneratedData', False))
+    def test_build_graph(self, eval_real_images):
+        flags.FLAGS.eval_real_images = eval_real_images
+        eval.main(None, run_eval_loop=False)
 
 
 if __name__ == '__main__':
-  absltest.main()
+    absltest.main()

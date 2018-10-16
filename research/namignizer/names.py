@@ -40,11 +40,10 @@ from __future__ import print_function
 
 import time
 
-import tensorflow as tf
-import numpy as np
-
-from model import NamignizerModel
 import data_utils
+import numpy as np
+import tensorflow as tf
+from model import NamignizerModel
 
 
 class SmallConfig(object):
@@ -188,7 +187,6 @@ def namignize(names, checkpoint_path, config):
         None
     """
     with tf.Graph().as_default(), tf.Session() as session:
-
         with tf.variable_scope("model"):
             m = NamignizerModel(is_training=False, config=config)
 
@@ -198,10 +196,10 @@ def namignize(names, checkpoint_path, config):
             x, y = data_utils.name_to_batch(name, m.batch_size, m.num_steps)
 
             cost, loss, _ = session.run([m.cost, m.loss, tf.no_op()],
-                                  {m.input_data: x,
-                                   m.targets: y,
-                                   m.weights: np.concatenate((
-                                       np.ones(len(name)), np.zeros(m.batch_size * m.num_steps - len(name))))})
+                                        {m.input_data: x,
+                                         m.targets: y,
+                                         m.weights: np.concatenate((
+                                             np.ones(len(name)), np.zeros(m.batch_size * m.num_steps - len(name))))})
 
             print("Name {} gives us a perplexity of {}".format(
                 name, np.exp(cost)))
@@ -223,7 +221,6 @@ def namignator(checkpoint_path, config):
     config.batch_size = 1
 
     with tf.Graph().as_default(), tf.Session() as session:
-
         with tf.variable_scope("model"):
             m = NamignizerModel(is_training=False, config=config)
 
@@ -254,6 +251,6 @@ if __name__ == "__main__":
     train("data/SmallNames.txt", "model/namignizer", SmallConfig)
 
     namignize(["mary", "ida", "gazorbazorb", "mmmhmm", "bob"],
-        tf.train.latest_checkpoint("model"), SmallConfig)
+              tf.train.latest_checkpoint("model"), SmallConfig)
 
     namignator(tf.train.latest_checkpoint("model"), SmallConfig)

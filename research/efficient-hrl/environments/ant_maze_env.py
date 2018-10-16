@@ -13,8 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
-from maze_env import MazeEnv
 from ant import AntEnv
+from maze_env import MazeEnv
 
 
 class AntMazeEnv(MazeEnv):

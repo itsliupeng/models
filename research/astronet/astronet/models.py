@@ -34,44 +34,44 @@ _MODELS = {
 
 
 def get_model_class(model_name):
-  """Looks up a model class by name.
+    """Looks up a model class by name.
+  
+    Args:
+      model_name: Name of the model class.
+  
+    Returns:
+      model_class: The requested model class.
+  
+    Raises:
+      ValueError: If model_name is unrecognized.
+    """
+    if model_name not in _MODELS:
+        raise ValueError("Unrecognized model name: %s" % model_name)
 
-  Args:
-    model_name: Name of the model class.
-
-  Returns:
-    model_class: The requested model class.
-
-  Raises:
-    ValueError: If model_name is unrecognized.
-  """
-  if model_name not in _MODELS:
-    raise ValueError("Unrecognized model name: %s" % model_name)
-
-  return _MODELS[model_name][0]
+    return _MODELS[model_name][0]
 
 
 def get_model_config(model_name, config_name):
-  """Looks up a model configuration by name.
+    """Looks up a model configuration by name.
+  
+    Args:
+      model_name: Name of the model class.
+      config_name: Name of a configuration-builder function from the model's
+          configurations module.
+  
+    Returns:
+      model_class: The requested model class.
+      config: The requested configuration.
+  
+    Raises:
+      ValueError: If model_name or config_name is unrecognized.
+    """
+    if model_name not in _MODELS:
+        raise ValueError("Unrecognized model name: %s" % model_name)
 
-  Args:
-    model_name: Name of the model class.
-    config_name: Name of a configuration-builder function from the model's
-        configurations module.
-
-  Returns:
-    model_class: The requested model class.
-    config: The requested configuration.
-
-  Raises:
-    ValueError: If model_name or config_name is unrecognized.
-  """
-  if model_name not in _MODELS:
-    raise ValueError("Unrecognized model name: %s" % model_name)
-
-  config_module = _MODELS[model_name][1]
-  try:
-    return getattr(config_module, config_name)()
-  except AttributeError:
-    raise ValueError("Config name '%s' not found in configuration module: %s" %
-                     (config_name, config_module.__name__))
+    config_module = _MODELS[model_name][1]
+    try:
+        return getattr(config_module, config_name)()
+    except AttributeError:
+        raise ValueError("Config name '%s' not found in configuration module: %s" %
+                         (config_name, config_module.__name__))

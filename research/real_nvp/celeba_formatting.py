@@ -40,7 +40,6 @@ import scipy.io.wavfile
 import scipy.ndimage
 import tensorflow as tf
 
-
 tf.flags.DEFINE_string("file_out", "",
                        "Filename of the output .tfrecords file.")
 tf.flags.DEFINE_string("fn_root", "", "Name of root file path.")

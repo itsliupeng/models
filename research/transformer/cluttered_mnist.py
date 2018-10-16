@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
+import numpy as np
 import tensorflow as tf
 from spatial_transformer import transformer
-import numpy as np
 from tf_utils import weight_variable, bias_variable, dense_to_one_hot
 
 # %% Load data
@@ -137,7 +137,6 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
-
 # %% We'll now train in minibatches and report accuracy, loss:
 iter_per_epoch = 100
 n_epochs = 500
@@ -148,8 +147,8 @@ indices = indices.astype('int')
 
 for epoch_i in range(n_epochs):
     for iter_i in range(iter_per_epoch - 1):
-        batch_xs = X_train[indices[iter_i]:indices[iter_i+1]]
-        batch_ys = Y_train[indices[iter_i]:indices[iter_i+1]]
+        batch_xs = X_train[indices[iter_i]:indices[iter_i + 1]]
+        batch_ys = Y_train[indices[iter_i]:indices[iter_i + 1]]
 
         if iter_i % 10 == 0:
             loss = sess.run(cross_entropy,

@@ -21,16 +21,16 @@ from __future__ import print_function
 
 
 class BayesianNN(object):
-  """A Bayesian neural network keeps a distribution over neural nets."""
+    """A Bayesian neural network keeps a distribution over neural nets."""
 
-  def __init__(self, optimizer):
-    pass
+    def __init__(self, optimizer):
+        pass
 
-  def build_model(self):
-    pass
+    def build_model(self):
+        pass
 
-  def train(self, data):
-    pass
+    def train(self, data):
+        pass
 
-  def sample(self, steps):
-    pass
+    def sample(self, steps):
+        pass

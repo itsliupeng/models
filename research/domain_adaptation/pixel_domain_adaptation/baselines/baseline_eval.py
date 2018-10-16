@@ -17,17 +17,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 from functools import partial
 
-import math
-
-# Dependency imports
-
 import tensorflow as tf
-
 from domain_adaptation.datasets import dataset_factory
 from domain_adaptation.pixel_domain_adaptation import pixelda_preprocess
 from domain_adaptation.pixel_domain_adaptation import pixelda_task_towers
+
+# Dependency imports
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -58,84 +56,85 @@ flags.DEFINE_integer(
     'num_readers', 4,
     'The number of parallel readers that read data from the dataset.')
 
+
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
-  hparams = tf.contrib.training.HParams()
-  hparams.weight_decay_task_classifier = 0.0
+    tf.logging.set_verbosity(tf.logging.INFO)
+    hparams = tf.contrib.training.HParams()
+    hparams.weight_decay_task_classifier = 0.0
 
-  if FLAGS.dataset_name in ['mnist', 'mnist_m', 'usps']:
-    hparams.task_tower = 'mnist'
-  else:
-    raise ValueError('Unknown dataset %s' % FLAGS.dataset_name)
-
-  if not tf.gfile.Exists(FLAGS.eval_dir):
-    tf.gfile.MakeDirs(FLAGS.eval_dir)
-
-  with tf.Graph().as_default():
-    dataset = dataset_factory.get_dataset(FLAGS.dataset_name, FLAGS.split_name,
-                                          FLAGS.dataset_dir)
-    num_classes = dataset.num_classes
-    num_samples = dataset.num_samples
-
-    preprocess_fn = partial(pixelda_preprocess.preprocess_classification,
-                            is_training=False)
-
-    images, labels = dataset_factory.provide_batch(
-        FLAGS.dataset_name,
-        FLAGS.split_name,
-        dataset_dir=FLAGS.dataset_dir,
-        num_readers=FLAGS.num_readers,
-        batch_size=FLAGS.batch_size,
-        num_preprocessing_threads=FLAGS.num_readers)
-
-    # Define the model
-    logits, _ = pixelda_task_towers.add_task_specific_model(
-        images, hparams, num_classes=num_classes, is_training=True)
-
-    #####################
-    # Define the losses #
-    #####################
-    if 'classes' in labels:
-      one_hot_labels = labels['classes']
-      loss = tf.losses.softmax_cross_entropy(
-          onehot_labels=one_hot_labels, logits=logits)
-      tf.summary.scalar('losses/Classification_Loss', loss)
+    if FLAGS.dataset_name in ['mnist', 'mnist_m', 'usps']:
+        hparams.task_tower = 'mnist'
     else:
-      raise ValueError('Only support classification for now.')
+        raise ValueError('Unknown dataset %s' % FLAGS.dataset_name)
 
-    total_loss = tf.losses.get_total_loss()
+    if not tf.gfile.Exists(FLAGS.eval_dir):
+        tf.gfile.MakeDirs(FLAGS.eval_dir)
 
-    predictions = tf.reshape(tf.argmax(logits, 1), shape=[-1])
-    class_labels = tf.argmax(labels['classes'], 1)
+    with tf.Graph().as_default():
+        dataset = dataset_factory.get_dataset(FLAGS.dataset_name, FLAGS.split_name,
+                                              FLAGS.dataset_dir)
+        num_classes = dataset.num_classes
+        num_samples = dataset.num_samples
 
-    metrics_to_values, metrics_to_updates = slim.metrics.aggregate_metric_map({
-        'Mean_Loss':
-            tf.contrib.metrics.streaming_mean(total_loss),
-        'Accuracy':
-            tf.contrib.metrics.streaming_accuracy(predictions,
-                                                  tf.reshape(
-                                                      class_labels,
-                                                      shape=[-1])),
-        'Recall_at_5':
-            tf.contrib.metrics.streaming_recall_at_k(logits, class_labels, 5),
-    })
+        preprocess_fn = partial(pixelda_preprocess.preprocess_classification,
+                                is_training=False)
 
-    tf.summary.histogram('outputs/Predictions', predictions)
-    tf.summary.histogram('outputs/Ground_Truth', class_labels)
+        images, labels = dataset_factory.provide_batch(
+            FLAGS.dataset_name,
+            FLAGS.split_name,
+            dataset_dir=FLAGS.dataset_dir,
+            num_readers=FLAGS.num_readers,
+            batch_size=FLAGS.batch_size,
+            num_preprocessing_threads=FLAGS.num_readers)
 
-    for name, value in metrics_to_values.iteritems():
-      tf.summary.scalar(name, value)
+        # Define the model
+        logits, _ = pixelda_task_towers.add_task_specific_model(
+            images, hparams, num_classes=num_classes, is_training=True)
 
-    num_batches = int(math.ceil(num_samples / float(FLAGS.batch_size)))
+        #####################
+        # Define the losses #
+        #####################
+        if 'classes' in labels:
+            one_hot_labels = labels['classes']
+            loss = tf.losses.softmax_cross_entropy(
+                onehot_labels=one_hot_labels, logits=logits)
+            tf.summary.scalar('losses/Classification_Loss', loss)
+        else:
+            raise ValueError('Only support classification for now.')
 
-    slim.evaluation.evaluation_loop(
-        master=FLAGS.master,
-        checkpoint_dir=FLAGS.checkpoint_dir,
-        logdir=FLAGS.eval_dir,
-        num_evals=num_batches,
-        eval_op=metrics_to_updates.values(),
-        eval_interval_secs=FLAGS.eval_interval_secs)
+        total_loss = tf.losses.get_total_loss()
+
+        predictions = tf.reshape(tf.argmax(logits, 1), shape=[-1])
+        class_labels = tf.argmax(labels['classes'], 1)
+
+        metrics_to_values, metrics_to_updates = slim.metrics.aggregate_metric_map({
+            'Mean_Loss':
+                tf.contrib.metrics.streaming_mean(total_loss),
+            'Accuracy':
+                tf.contrib.metrics.streaming_accuracy(predictions,
+                                                      tf.reshape(
+                                                          class_labels,
+                                                          shape=[-1])),
+            'Recall_at_5':
+                tf.contrib.metrics.streaming_recall_at_k(logits, class_labels, 5),
+        })
+
+        tf.summary.histogram('outputs/Predictions', predictions)
+        tf.summary.histogram('outputs/Ground_Truth', class_labels)
+
+        for name, value in metrics_to_values.iteritems():
+            tf.summary.scalar(name, value)
+
+        num_batches = int(math.ceil(num_samples / float(FLAGS.batch_size)))
+
+        slim.evaluation.evaluation_loop(
+            master=FLAGS.master,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            logdir=FLAGS.eval_dir,
+            num_evals=num_batches,
+            eval_op=metrics_to_updates.values(),
+            eval_interval_secs=FLAGS.eval_interval_secs)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()

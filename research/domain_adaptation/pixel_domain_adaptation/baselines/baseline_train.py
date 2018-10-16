@@ -20,13 +20,12 @@ from __future__ import print_function
 
 from functools import partial
 
-# Dependency imports
-
 import tensorflow as tf
-
 from domain_adaptation.datasets import dataset_factory
 from domain_adaptation.pixel_domain_adaptation import pixelda_preprocess
 from domain_adaptation.pixel_domain_adaptation import pixelda_task_towers
+
+# Dependency imports
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -84,78 +83,78 @@ flags.DEFINE_float(
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
-  hparams = tf.contrib.training.HParams()
-  hparams.weight_decay_task_classifier = FLAGS.weight_decay
+    tf.logging.set_verbosity(tf.logging.INFO)
+    hparams = tf.contrib.training.HParams()
+    hparams.weight_decay_task_classifier = FLAGS.weight_decay
 
-  if FLAGS.dataset_name in ['mnist', 'mnist_m', 'usps']:
-    hparams.task_tower = 'mnist'
-  else:
-    raise ValueError('Unknown dataset %s' % FLAGS.dataset_name)
+    if FLAGS.dataset_name in ['mnist', 'mnist_m', 'usps']:
+        hparams.task_tower = 'mnist'
+    else:
+        raise ValueError('Unknown dataset %s' % FLAGS.dataset_name)
 
-  with tf.Graph().as_default():
-    with tf.device(
-        tf.train.replica_device_setter(FLAGS.num_ps_tasks, merge_devices=True)):
-      dataset = dataset_factory.get_dataset(FLAGS.dataset_name,
-                                            FLAGS.split_name, FLAGS.dataset_dir)
-      num_classes = dataset.num_classes
+    with tf.Graph().as_default():
+        with tf.device(
+                tf.train.replica_device_setter(FLAGS.num_ps_tasks, merge_devices=True)):
+            dataset = dataset_factory.get_dataset(FLAGS.dataset_name,
+                                                  FLAGS.split_name, FLAGS.dataset_dir)
+            num_classes = dataset.num_classes
 
-      preprocess_fn = partial(pixelda_preprocess.preprocess_classification,
-                              is_training=True)
+            preprocess_fn = partial(pixelda_preprocess.preprocess_classification,
+                                    is_training=True)
 
-      images, labels = dataset_factory.provide_batch(
-          FLAGS.dataset_name,
-          FLAGS.split_name,
-          dataset_dir=FLAGS.dataset_dir,
-          num_readers=FLAGS.num_readers,
-          batch_size=FLAGS.batch_size,
-          num_preprocessing_threads=FLAGS.num_readers)
-      # preprocess_fn=preprocess_fn)
+            images, labels = dataset_factory.provide_batch(
+                FLAGS.dataset_name,
+                FLAGS.split_name,
+                dataset_dir=FLAGS.dataset_dir,
+                num_readers=FLAGS.num_readers,
+                batch_size=FLAGS.batch_size,
+                num_preprocessing_threads=FLAGS.num_readers)
+            # preprocess_fn=preprocess_fn)
 
-      # Define the model
-      logits, _ = pixelda_task_towers.add_task_specific_model(
-          images, hparams, num_classes=num_classes, is_training=True)
+            # Define the model
+            logits, _ = pixelda_task_towers.add_task_specific_model(
+                images, hparams, num_classes=num_classes, is_training=True)
 
-      # Define the losses
-      if 'classes' in labels:
-        one_hot_labels = labels['classes']
-        loss = tf.losses.softmax_cross_entropy(
-            onehot_labels=one_hot_labels, logits=logits)
-        tf.summary.scalar('losses/Classification_Loss', loss)
-      else:
-        raise ValueError('Only support classification for now.')
+            # Define the losses
+            if 'classes' in labels:
+                one_hot_labels = labels['classes']
+                loss = tf.losses.softmax_cross_entropy(
+                    onehot_labels=one_hot_labels, logits=logits)
+                tf.summary.scalar('losses/Classification_Loss', loss)
+            else:
+                raise ValueError('Only support classification for now.')
 
-      total_loss = tf.losses.get_total_loss()
-      tf.summary.scalar('losses/Total_Loss', total_loss)
+            total_loss = tf.losses.get_total_loss()
+            tf.summary.scalar('losses/Total_Loss', total_loss)
 
-      # Setup the moving averages
-      moving_average_variables = slim.get_model_variables()
-      variable_averages = tf.train.ExponentialMovingAverage(
-          FLAGS.moving_average_decay, slim.get_or_create_global_step())
-      tf.add_to_collection(
-          tf.GraphKeys.UPDATE_OPS,
-          variable_averages.apply(moving_average_variables))
+            # Setup the moving averages
+            moving_average_variables = slim.get_model_variables()
+            variable_averages = tf.train.ExponentialMovingAverage(
+                FLAGS.moving_average_decay, slim.get_or_create_global_step())
+            tf.add_to_collection(
+                tf.GraphKeys.UPDATE_OPS,
+                variable_averages.apply(moving_average_variables))
 
-      # Specify the optimization scheme:
-      learning_rate = tf.train.exponential_decay(
-          FLAGS.learning_rate,
-          slim.get_or_create_global_step(),
-          FLAGS.learning_rate_decay_steps,
-          FLAGS.learning_rate_decay_factor,
-          staircase=True)
+            # Specify the optimization scheme:
+            learning_rate = tf.train.exponential_decay(
+                FLAGS.learning_rate,
+                slim.get_or_create_global_step(),
+                FLAGS.learning_rate_decay_steps,
+                FLAGS.learning_rate_decay_factor,
+                staircase=True)
 
-      optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.adam_beta1)
+            optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.adam_beta1)
 
-      train_op = slim.learning.create_train_op(total_loss, optimizer)
+            train_op = slim.learning.create_train_op(total_loss, optimizer)
 
-      slim.learning.train(
-          train_op,
-          FLAGS.logdir,
-          master=FLAGS.master,
-          is_chief=(FLAGS.task == 0),
-          save_summaries_secs=FLAGS.save_summaries_secs,
-          save_interval_secs=FLAGS.save_interval_secs)
+            slim.learning.train(
+                train_op,
+                FLAGS.logdir,
+                master=FLAGS.master,
+                is_chief=(FLAGS.task == 0),
+                save_summaries_secs=FLAGS.save_summaries_secs,
+                save_interval_secs=FLAGS.save_interval_secs)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()

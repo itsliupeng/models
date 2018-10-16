@@ -85,118 +85,118 @@ from tensorflow.python.platform import tf_logging as logging
 
 
 def _GetClass(name):
-  """Looks up a class by name.
+    """Looks up a class by name.
+  
+    Args:
+      name: The fully-qualified type name of the class to return.
+  
+    Returns:
+      The class associated with the |name|, or None on error.
+    """
+    elements = name.split('.')
 
-  Args:
-    name: The fully-qualified type name of the class to return.
+    # Need at least "module.Class".
+    if len(elements) < 2:
+        logging.info('Malformed type: "%s"', name)
+        return None
+    module_path = '.'.join(elements[:-1])
+    class_name = elements[-1]
 
-  Returns:
-    The class associated with the |name|, or None on error.
-  """
-  elements = name.split('.')
+    # Import the module.
+    try:
+        __import__(module_path)
+    except ImportError as e:
+        logging.info('Unable to find module "%s": "%s"', module_path, e)
+        return None
+    module = sys.modules[module_path]
 
-  # Need at least "module.Class".
-  if len(elements) < 2:
-    logging.info('Malformed type: "%s"', name)
-    return None
-  module_path = '.'.join(elements[:-1])
-  class_name = elements[-1]
+    # Look up the class.
+    if not hasattr(module, class_name):
+        logging.info('Name "%s" not found in module: "%s"', class_name, module_path)
+        return None
+    class_obj = getattr(module, class_name)
 
-  # Import the module.
-  try:
-    __import__(module_path)
-  except ImportError as e:
-    logging.info('Unable to find module "%s": "%s"', module_path, e)
-    return None
-  module = sys.modules[module_path]
-
-  # Look up the class.
-  if not hasattr(module, class_name):
-    logging.info('Name "%s" not found in module: "%s"', class_name, module_path)
-    return None
-  class_obj = getattr(module, class_name)
-
-  # Check that it is actually a class.
-  if not inspect.isclass(class_obj):
-    logging.info('Name does not refer to a class: "%s"', name)
-    return None
-  return class_obj
+    # Check that it is actually a class.
+    if not inspect.isclass(class_obj):
+        logging.info('Name does not refer to a class: "%s"', name)
+        return None
+    return class_obj
 
 
 def _Create(baseclass, subclass_name, *args, **kwargs):
-  """Creates an instance of a named subclass.
-
-  Args:
-    baseclass: The expected base class.
-    subclass_name: The fully-qualified type name of the subclass to create.
-    *args: Passed to the subclass constructor.
-    **kwargs: Passed to the subclass constructor.
-
-  Returns:
-    An instance of the named subclass, or None on error.
-  """
-  subclass = _GetClass(subclass_name)
-  if subclass is None:
-    return None  # _GetClass() already logged an error
-  if not issubclass(subclass, baseclass):
-    logging.info('Class "%s" is not a subclass of "%s"', subclass_name,
-                 baseclass.__name__)
-    return None
-  return subclass(*args, **kwargs)
+    """Creates an instance of a named subclass.
+  
+    Args:
+      baseclass: The expected base class.
+      subclass_name: The fully-qualified type name of the subclass to create.
+      *args: Passed to the subclass constructor.
+      **kwargs: Passed to the subclass constructor.
+  
+    Returns:
+      An instance of the named subclass, or None on error.
+    """
+    subclass = _GetClass(subclass_name)
+    if subclass is None:
+        return None  # _GetClass() already logged an error
+    if not issubclass(subclass, baseclass):
+        logging.info('Class "%s" is not a subclass of "%s"', subclass_name,
+                     baseclass.__name__)
+        return None
+    return subclass(*args, **kwargs)
 
 
 def _ResolveAndCreate(baseclass, path, subclass_name, *args, **kwargs):
-  """Resolves the name of a subclass and creates an instance of it.
-
-  The subclass is resolved with respect to a package path in an inside-out
-  manner.  For example, if |path| is 'syntaxnet.foo.bar' and |subclass_name| is
-  'baz.ClassName', then attempts are made to create instances of the following
-  fully-qualified class names:
-
-    'syntaxnet.foo.bar.baz.ClassName'
-    'syntaxnet.foo.baz.ClassName'
-    'syntaxnet.baz.ClassName'
-    'baz.ClassName'
-
-  An instance corresponding to the first successful attempt is returned.
-
-  Args:
-    baseclass: The expected base class.
-    path: The path to use to resolve the subclass.
-    subclass_name: The name of the subclass to create.
-    *args: Passed to the subclass constructor.
-    **kwargs: Passed to the subclass constructor.
-
-  Returns:
-    An instance of the named subclass corresponding to the inner-most successful
-    name resolution, or None if the name could not be resolved.
-
-  Raises:
-    ValueError: If the subclass cannot be resolved and created.
-  """
-  elements = path.split('.')
-  while True:
-    resolved_subclass_name = '.'.join(elements + [subclass_name])
-    logging.info('Attempting to instantiate "%s"', resolved_subclass_name)
-    subclass = _Create(baseclass, resolved_subclass_name, *args, **kwargs)
-    if subclass:
-      return subclass  # success
-    if not elements:
-      break  # no more paths to try
-    elements.pop()  # try resolving against the next-outer path
-  raise ValueError(
-      'Failed to create subclass "%s" of base class %s using path %s' %
-      (subclass_name, baseclass.__name__, path))
+    """Resolves the name of a subclass and creates an instance of it.
+  
+    The subclass is resolved with respect to a package path in an inside-out
+    manner.  For example, if |path| is 'syntaxnet.foo.bar' and |subclass_name| is
+    'baz.ClassName', then attempts are made to create instances of the following
+    fully-qualified class names:
+  
+      'syntaxnet.foo.bar.baz.ClassName'
+      'syntaxnet.foo.baz.ClassName'
+      'syntaxnet.baz.ClassName'
+      'baz.ClassName'
+  
+    An instance corresponding to the first successful attempt is returned.
+  
+    Args:
+      baseclass: The expected base class.
+      path: The path to use to resolve the subclass.
+      subclass_name: The name of the subclass to create.
+      *args: Passed to the subclass constructor.
+      **kwargs: Passed to the subclass constructor.
+  
+    Returns:
+      An instance of the named subclass corresponding to the inner-most successful
+      name resolution, or None if the name could not be resolved.
+  
+    Raises:
+      ValueError: If the subclass cannot be resolved and created.
+    """
+    elements = path.split('.')
+    while True:
+        resolved_subclass_name = '.'.join(elements + [subclass_name])
+        logging.info('Attempting to instantiate "%s"', resolved_subclass_name)
+        subclass = _Create(baseclass, resolved_subclass_name, *args, **kwargs)
+        if subclass:
+            return subclass  # success
+        if not elements:
+            break  # no more paths to try
+        elements.pop()  # try resolving against the next-outer path
+    raise ValueError(
+        'Failed to create subclass "%s" of base class %s using path %s' %
+        (subclass_name, baseclass.__name__, path))
 
 
 def RegisteredClass(baseclass):
-  """Decorates the |baseclass| with a static Create() method."""
-  assert not hasattr(baseclass, 'Create')
+    """Decorates the |baseclass| with a static Create() method."""
+    assert not hasattr(baseclass, 'Create')
 
-  def Create(subclass_name, *args, **kwargs):
-    """A wrapper around _Create() that curries the |baseclass|."""
-    path = inspect.getmodule(baseclass).__name__
-    return _ResolveAndCreate(baseclass, path, subclass_name, *args, **kwargs)
+    def Create(subclass_name, *args, **kwargs):
+        """A wrapper around _Create() that curries the |baseclass|."""
+        path = inspect.getmodule(baseclass).__name__
+        return _ResolveAndCreate(baseclass, path, subclass_name, *args, **kwargs)
 
-  baseclass.Create = staticmethod(Create)
-  return baseclass
+    baseclass.Create = staticmethod(Create)
+    return baseclass

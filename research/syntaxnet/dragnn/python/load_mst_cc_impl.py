@@ -16,6 +16,7 @@
 """Loads mst_ops shared library."""
 
 import os.path
+
 import tensorflow as tf
 
 tf.load_op_library(

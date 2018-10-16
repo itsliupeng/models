@@ -1,4 +1,3 @@
-
 # Copyright 2018 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +21,11 @@ from deeplab.core import utils
 
 class UtilsTest(tf.test.TestCase):
 
-  def testScaleDimensionOutput(self):
-    self.assertEqual(161, utils.scale_dimension(321, 0.5))
-    self.assertEqual(193, utils.scale_dimension(321, 0.6))
-    self.assertEqual(241, utils.scale_dimension(321, 0.75))
+    def testScaleDimensionOutput(self):
+        self.assertEqual(161, utils.scale_dimension(321, 0.5))
+        self.assertEqual(193, utils.scale_dimension(321, 0.6))
+        self.assertEqual(241, utils.scale_dimension(321, 0.75))
 
 
 if __name__ == '__main__':
-  tf.test.main()
+    tf.test.main()

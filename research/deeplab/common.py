@@ -130,44 +130,44 @@ class ModelOptions(
         'depth_multiplier',
         'dense_prediction_cell_config',
     ])):
-  """Immutable class to hold model options."""
+    """Immutable class to hold model options."""
 
-  __slots__ = ()
+    __slots__ = ()
 
-  def __new__(cls,
-              outputs_to_num_classes,
-              crop_size=None,
-              atrous_rates=None,
-              output_stride=8):
-    """Constructor to set default values.
+    def __new__(cls,
+                outputs_to_num_classes,
+                crop_size=None,
+                atrous_rates=None,
+                output_stride=8):
+        """Constructor to set default values.
 
-    Args:
-      outputs_to_num_classes: A dictionary from output type to the number of
-        classes. For example, for the task of semantic segmentation with 21
-        semantic classes, we would have outputs_to_num_classes['semantic'] = 21.
-      crop_size: A tuple [crop_height, crop_width].
-      atrous_rates: A list of atrous convolution rates for ASPP.
-      output_stride: The ratio of input to output spatial resolution.
+        Args:
+          outputs_to_num_classes: A dictionary from output type to the number of
+            classes. For example, for the task of semantic segmentation with 21
+            semantic classes, we would have outputs_to_num_classes['semantic'] = 21.
+          crop_size: A tuple [crop_height, crop_width].
+          atrous_rates: A list of atrous convolution rates for ASPP.
+          output_stride: The ratio of input to output spatial resolution.
 
-    Returns:
-      A new ModelOptions instance.
-    """
-    dense_prediction_cell_config = None
-    if FLAGS.dense_prediction_cell_json:
-      with tf.gfile.Open(FLAGS.dense_prediction_cell_json, 'r') as f:
-        dense_prediction_cell_config = json.load(f)
+        Returns:
+          A new ModelOptions instance.
+        """
+        dense_prediction_cell_config = None
+        if FLAGS.dense_prediction_cell_json:
+            with tf.gfile.Open(FLAGS.dense_prediction_cell_json, 'r') as f:
+                dense_prediction_cell_config = json.load(f)
 
-    return super(ModelOptions, cls).__new__(
-        cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
-        FLAGS.merge_method, FLAGS.add_image_level_feature,
-        FLAGS.image_pooling_crop_size, FLAGS.aspp_with_batch_norm,
-        FLAGS.aspp_with_separable_conv, FLAGS.multi_grid,
-        FLAGS.decoder_output_stride, FLAGS.decoder_use_separable_conv,
-        FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier,
-        dense_prediction_cell_config)
+        return super(ModelOptions, cls).__new__(
+            cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
+            FLAGS.merge_method, FLAGS.add_image_level_feature,
+            FLAGS.image_pooling_crop_size, FLAGS.aspp_with_batch_norm,
+            FLAGS.aspp_with_separable_conv, FLAGS.multi_grid,
+            FLAGS.decoder_output_stride, FLAGS.decoder_use_separable_conv,
+            FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier,
+            dense_prediction_cell_config)
 
-  def __deepcopy__(self, memo):
-    return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),
-                        self.crop_size,
-                        self.atrous_rates,
-                        self.output_stride)
+    def __deepcopy__(self, memo):
+        return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),
+                            self.crop_size,
+                            self.atrous_rates,
+                            self.output_stride)

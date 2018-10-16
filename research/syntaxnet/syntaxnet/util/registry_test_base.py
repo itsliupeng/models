@@ -5,8 +5,8 @@ from syntaxnet.util import registry
 
 @registry.RegisteredClass
 class Base(object):
-  """Dummy base class."""
+    """Dummy base class."""
 
-  def Get(self):
-    """Overridden in subclasses."""
-    return None
+    def Get(self):
+        """Overridden in subclasses."""
+        return None

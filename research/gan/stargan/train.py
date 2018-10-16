@@ -18,12 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
-from absl import flags
-import tensorflow as tf
-
 import data_provider
 import network
+import tensorflow as tf
+from absl import flags
 
 # FLAGS for data.
 flags.DEFINE_multi_string(
@@ -62,167 +60,165 @@ tfgan = tf.contrib.gan
 
 
 def _define_model(images, labels):
-  """Create the StarGAN Model.
+    """Create the StarGAN Model.
+  
+    Args:
+      images: `Tensor` or list of `Tensor` of shape (N, H, W, C).
+      labels: `Tensor` or list of `Tensor` of shape (N, num_domains).
+  
+    Returns:
+      `StarGANModel` namedtuple.
+    """
 
-  Args:
-    images: `Tensor` or list of `Tensor` of shape (N, H, W, C).
-    labels: `Tensor` or list of `Tensor` of shape (N, num_domains).
-
-  Returns:
-    `StarGANModel` namedtuple.
-  """
-
-  return tfgan.stargan_model(
-      generator_fn=network.generator,
-      discriminator_fn=network.discriminator,
-      input_data=images,
-      input_data_domain_label=labels)
+    return tfgan.stargan_model(
+        generator_fn=network.generator,
+        discriminator_fn=network.discriminator,
+        input_data=images,
+        input_data_domain_label=labels)
 
 
 def _get_lr(base_lr):
-  """Returns a learning rate `Tensor`.
+    """Returns a learning rate `Tensor`.
+  
+    Args:
+      base_lr: A scalar float `Tensor` or a Python number.  The base learning
+          rate.
+  
+    Returns:
+      A scalar float `Tensor` of learning rate which equals `base_lr` when the
+      global training step is less than FLAGS.max_number_of_steps / 2, afterwards
+      it linearly decays to zero.
+    """
+    global_step = tf.train.get_or_create_global_step()
+    lr_constant_steps = FLAGS.max_number_of_steps // 2
 
-  Args:
-    base_lr: A scalar float `Tensor` or a Python number.  The base learning
-        rate.
+    def _lr_decay():
+        return tf.train.polynomial_decay(
+            learning_rate=base_lr,
+            global_step=(global_step - lr_constant_steps),
+            decay_steps=(FLAGS.max_number_of_steps - lr_constant_steps),
+            end_learning_rate=0.0)
 
-  Returns:
-    A scalar float `Tensor` of learning rate which equals `base_lr` when the
-    global training step is less than FLAGS.max_number_of_steps / 2, afterwards
-    it linearly decays to zero.
-  """
-  global_step = tf.train.get_or_create_global_step()
-  lr_constant_steps = FLAGS.max_number_of_steps // 2
-
-  def _lr_decay():
-    return tf.train.polynomial_decay(
-        learning_rate=base_lr,
-        global_step=(global_step - lr_constant_steps),
-        decay_steps=(FLAGS.max_number_of_steps - lr_constant_steps),
-        end_learning_rate=0.0)
-
-  return tf.cond(global_step < lr_constant_steps, lambda: base_lr, _lr_decay)
+    return tf.cond(global_step < lr_constant_steps, lambda: base_lr, _lr_decay)
 
 
 def _get_optimizer(gen_lr, dis_lr):
-  """Returns generator optimizer and discriminator optimizer.
-
-  Args:
-    gen_lr: A scalar float `Tensor` or a Python number.  The Generator learning
-        rate.
-    dis_lr: A scalar float `Tensor` or a Python number.  The Discriminator
-        learning rate.
-
-  Returns:
-    A tuple of generator optimizer and discriminator optimizer.
-  """
-  gen_opt = tf.train.AdamOptimizer(
-      gen_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
-  dis_opt = tf.train.AdamOptimizer(
-      dis_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
-  return gen_opt, dis_opt
+    """Returns generator optimizer and discriminator optimizer.
+  
+    Args:
+      gen_lr: A scalar float `Tensor` or a Python number.  The Generator learning
+          rate.
+      dis_lr: A scalar float `Tensor` or a Python number.  The Discriminator
+          learning rate.
+  
+    Returns:
+      A tuple of generator optimizer and discriminator optimizer.
+    """
+    gen_opt = tf.train.AdamOptimizer(
+        gen_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
+    dis_opt = tf.train.AdamOptimizer(
+        dis_lr, beta1=FLAGS.adam_beta1, beta2=FLAGS.adam_beta2, use_locking=True)
+    return gen_opt, dis_opt
 
 
 def _define_train_ops(model, loss):
-  """Defines train ops that trains `stargan_model` with `stargan_loss`.
+    """Defines train ops that trains `stargan_model` with `stargan_loss`.
+  
+    Args:
+      model: A `StarGANModel` namedtuple.
+      loss: A `StarGANLoss` namedtuple containing all losses for
+          `stargan_model`.
+  
+    Returns:
+      A `GANTrainOps` namedtuple.
+    """
 
-  Args:
-    model: A `StarGANModel` namedtuple.
-    loss: A `StarGANLoss` namedtuple containing all losses for
-        `stargan_model`.
+    gen_lr = _get_lr(FLAGS.generator_lr)
+    dis_lr = _get_lr(FLAGS.discriminator_lr)
+    gen_opt, dis_opt = _get_optimizer(gen_lr, dis_lr)
+    train_ops = tfgan.gan_train_ops(
+        model,
+        loss,
+        generator_optimizer=gen_opt,
+        discriminator_optimizer=dis_opt,
+        summarize_gradients=True,
+        colocate_gradients_with_ops=True,
+        aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
 
-  Returns:
-    A `GANTrainOps` namedtuple.
-  """
+    tf.summary.scalar('generator_lr', gen_lr)
+    tf.summary.scalar('discriminator_lr', dis_lr)
 
-  gen_lr = _get_lr(FLAGS.generator_lr)
-  dis_lr = _get_lr(FLAGS.discriminator_lr)
-  gen_opt, dis_opt = _get_optimizer(gen_lr, dis_lr)
-  train_ops = tfgan.gan_train_ops(
-      model,
-      loss,
-      generator_optimizer=gen_opt,
-      discriminator_optimizer=dis_opt,
-      summarize_gradients=True,
-      colocate_gradients_with_ops=True,
-      aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
-
-  tf.summary.scalar('generator_lr', gen_lr)
-  tf.summary.scalar('discriminator_lr', dis_lr)
-
-  return train_ops
+    return train_ops
 
 
 def _define_train_step():
-  """Get the training step for generator and discriminator for each GAN step.
+    """Get the training step for generator and discriminator for each GAN step.
+  
+    Returns:
+      GANTrainSteps namedtuple representing the training step configuration.
+    """
 
-  Returns:
-    GANTrainSteps namedtuple representing the training step configuration.
-  """
-
-  if FLAGS.gen_disc_step_ratio <= 1:
-    discriminator_step = int(1 / FLAGS.gen_disc_step_ratio)
-    return tfgan.GANTrainSteps(1, discriminator_step)
-  else:
-    generator_step = int(FLAGS.gen_disc_step_ratio)
-    return tfgan.GANTrainSteps(generator_step, 1)
+    if FLAGS.gen_disc_step_ratio <= 1:
+        discriminator_step = int(1 / FLAGS.gen_disc_step_ratio)
+        return tfgan.GANTrainSteps(1, discriminator_step)
+    else:
+        generator_step = int(FLAGS.gen_disc_step_ratio)
+        return tfgan.GANTrainSteps(generator_step, 1)
 
 
 def main(_):
+    # Create the log_dir if not exist.
+    if not tf.gfile.Exists(FLAGS.train_log_dir):
+        tf.gfile.MakeDirs(FLAGS.train_log_dir)
 
-  # Create the log_dir if not exist.
-  if not tf.gfile.Exists(FLAGS.train_log_dir):
-    tf.gfile.MakeDirs(FLAGS.train_log_dir)
+    # Shard the model to different parameter servers.
+    with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
+        # Create the input dataset.
+        with tf.name_scope('inputs'):
+            images, labels = data_provider.provide_data(
+                FLAGS.image_file_patterns, FLAGS.batch_size, FLAGS.patch_size)
 
-  # Shard the model to different parameter servers.
-  with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
+        # Define the model.
+        with tf.name_scope('model'):
+            model = _define_model(images, labels)
 
-    # Create the input dataset.
-    with tf.name_scope('inputs'):
-      images, labels = data_provider.provide_data(
-          FLAGS.image_file_patterns, FLAGS.batch_size, FLAGS.patch_size)
+        # Add image summary.
+        tfgan.eval.add_stargan_image_summaries(
+            model,
+            num_images=len(FLAGS.image_file_patterns) * FLAGS.batch_size,
+            display_diffs=True)
 
-    # Define the model.
-    with tf.name_scope('model'):
-      model = _define_model(images, labels)
+        # Define the model loss.
+        loss = tfgan.stargan_loss(model)
 
-    # Add image summary.
-    tfgan.eval.add_stargan_image_summaries(
-        model,
-        num_images=len(FLAGS.image_file_patterns) * FLAGS.batch_size,
-        display_diffs=True)
+        # Define the train ops.
+        with tf.name_scope('train_ops'):
+            train_ops = _define_train_ops(model, loss)
 
-    # Define the model loss.
-    loss = tfgan.stargan_loss(model)
+        # Define the train steps.
+        train_steps = _define_train_step()
 
-    # Define the train ops.
-    with tf.name_scope('train_ops'):
-      train_ops = _define_train_ops(model, loss)
+        # Define a status message.
+        status_message = tf.string_join(
+            [
+                'Starting train step: ',
+                tf.as_string(tf.train.get_or_create_global_step())
+            ],
+            name='status_message')
 
-    # Define the train steps.
-    train_steps = _define_train_step()
-
-    # Define a status message.
-    status_message = tf.string_join(
-        [
-            'Starting train step: ',
-            tf.as_string(tf.train.get_or_create_global_step())
-        ],
-        name='status_message')
-
-    # Train the model.
-    tfgan.gan_train(
-        train_ops,
-        FLAGS.train_log_dir,
-        get_hooks_fn=tfgan.get_sequential_train_hooks(train_steps),
-        hooks=[
-            tf.train.StopAtStepHook(num_steps=FLAGS.max_number_of_steps),
-            tf.train.LoggingTensorHook([status_message], every_n_iter=10)
-        ],
-        master=FLAGS.master,
-        is_chief=FLAGS.task == 0)
+        # Train the model.
+        tfgan.gan_train(
+            train_ops,
+            FLAGS.train_log_dir,
+            get_hooks_fn=tfgan.get_sequential_train_hooks(train_steps),
+            hooks=[
+                tf.train.StopAtStepHook(num_steps=FLAGS.max_number_of_steps),
+                tf.train.LoggingTensorHook([status_message], every_n_iter=10)
+            ],
+            master=FLAGS.master,
+            is_chief=FLAGS.task == 0)
 
 
 if __name__ == '__main__':
-  tf.flags.mark_flag_as_required('image_file_patterns')
-  tf.app.run()
+    tf.flags.mark_flag_as_required('image_file_patterns')
+    tf.app.run()

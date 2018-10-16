@@ -20,24 +20,23 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-
 from bandits.core.bandit_algorithm import BanditAlgorithm
 
 
 class UniformSampling(BanditAlgorithm):
-  """Defines a baseline; returns one action uniformly at random."""
+    """Defines a baseline; returns one action uniformly at random."""
 
-  def __init__(self, name, hparams):
-    """Creates a UniformSampling object.
+    def __init__(self, name, hparams):
+        """Creates a UniformSampling object.
 
-    Args:
-      name: Name of the algorithm.
-      hparams: Hyper-parameters, including the number of arms (num_actions).
-    """
+        Args:
+          name: Name of the algorithm.
+          hparams: Hyper-parameters, including the number of arms (num_actions).
+        """
 
-    self.name = name
-    self.hparams = hparams
+        self.name = name
+        self.hparams = hparams
 
-  def action(self, context):
-    """Selects an action uniformly at random."""
-    return np.random.choice(range(self.hparams.num_actions))
+    def action(self, context):
+        """Selects an action uniformly at random."""
+        return np.random.choice(range(self.hparams.num_actions))

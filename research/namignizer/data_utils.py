@@ -18,10 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import os
 
 import numpy as np
-import tensorflow as tf
 import pandas as pd
 
 # the default end of name rep will be zero

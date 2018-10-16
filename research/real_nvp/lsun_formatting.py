@@ -36,9 +36,8 @@ import os.path
 
 import numpy
 import skimage.transform
-from PIL import Image
 import tensorflow as tf
-
+from PIL import Image
 
 tf.flags.DEFINE_string("file_out", "",
                        "Filename of the output .tfrecords file.")

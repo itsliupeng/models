@@ -58,56 +58,56 @@ COLUMN_TYPES = collections.OrderedDict([
 
 
 def raw_dataframe():
-  """Load the automobile data set as a pd.DataFrame."""
-  # Download and cache the data
-  path = tf.keras.utils.get_file(URL.split("/")[-1], URL)
+    """Load the automobile data set as a pd.DataFrame."""
+    # Download and cache the data
+    path = tf.keras.utils.get_file(URL.split("/")[-1], URL)
 
-  # Load it into a pandas DataFrame
-  df = pd.read_csv(path, names=COLUMN_TYPES.keys(),
-                   dtype=COLUMN_TYPES, na_values="?")
+    # Load it into a pandas DataFrame
+    df = pd.read_csv(path, names=COLUMN_TYPES.keys(),
+                     dtype=COLUMN_TYPES, na_values="?")
 
-  return df
+    return df
 
 
 def load_data(y_name="price", train_fraction=0.7, seed=None):
-  """Load the automobile data set and split it train/test and features/label.
+    """Load the automobile data set and split it train/test and features/label.
 
-  A description of the data is available at:
-    https://archive.ics.uci.edu/ml/datasets/automobile
+    A description of the data is available at:
+      https://archive.ics.uci.edu/ml/datasets/automobile
 
-  The data itself can be found at:
-    https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data
+    The data itself can be found at:
+      https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data
 
-  Args:
-    y_name: the column to return as the label.
-    train_fraction: the fraction of the data set to use for training.
-    seed: The random seed to use when shuffling the data. `None` generates a
-      unique shuffle every run.
-  Returns:
-    a pair of pairs where the first pair is the training data, and the second
-    is the test data:
-    `(x_train, y_train), (x_test, y_test) = load_data(...)`
-    `x` contains a pandas DataFrame of features, while `y` contains the label
-    array.
-  """
-  # Load the raw data columns.
-  data = raw_dataframe()
+    Args:
+      y_name: the column to return as the label.
+      train_fraction: the fraction of the data set to use for training.
+      seed: The random seed to use when shuffling the data. `None` generates a
+        unique shuffle every run.
+    Returns:
+      a pair of pairs where the first pair is the training data, and the second
+      is the test data:
+      `(x_train, y_train), (x_test, y_test) = load_data(...)`
+      `x` contains a pandas DataFrame of features, while `y` contains the label
+      array.
+    """
+    # Load the raw data columns.
+    data = raw_dataframe()
 
-  # Delete rows with unknowns
-  data = data.dropna()
+    # Delete rows with unknowns
+    data = data.dropna()
 
-  # Shuffle the data
-  np.random.seed(seed)
+    # Shuffle the data
+    np.random.seed(seed)
 
-  # Split the data into train/test subsets.
-  x_train = data.sample(frac=train_fraction, random_state=seed)
-  x_test = data.drop(x_train.index)
+    # Split the data into train/test subsets.
+    x_train = data.sample(frac=train_fraction, random_state=seed)
+    x_test = data.drop(x_train.index)
 
-  # Extract the label from the features DataFrame.
-  y_train = x_train.pop(y_name)
-  y_test = x_test.pop(y_name)
+    # Extract the label from the features DataFrame.
+    y_train = x_train.pop(y_name)
+    y_test = x_test.pop(y_name)
 
-  return (x_train, y_train), (x_test, y_test)
+    return (x_train, y_train), (x_test, y_test)
 
 
 def make_dataset(batch_sz, x, y=None, shuffle=False, shuffle_buffer_size=1000):

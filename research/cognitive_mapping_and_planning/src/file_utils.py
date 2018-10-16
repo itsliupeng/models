@@ -16,27 +16,30 @@
 """Utilities for manipulating files.
 """
 import os
-import numpy as np
-import PIL
-from tensorflow.python.platform import gfile
-import cv2
 
-exists   = lambda path: gfile.Exists(path)
-fopen    = lambda path, mode: gfile.Open(path, mode)
+import PIL
+import cv2
+import numpy as np
+from tensorflow.python.platform import gfile
+
+exists = lambda path: gfile.Exists(path)
+fopen = lambda path, mode: gfile.Open(path, mode)
 makedirs = lambda path: gfile.MakeDirs(path)
-listdir  = lambda path: gfile.ListDir(path)
-copyfile = lambda a, b, o: gfile.Copy(a,b,o)
+listdir = lambda path: gfile.ListDir(path)
+copyfile = lambda a, b, o: gfile.Copy(a, b, o)
+
 
 def write_image(image_path, rgb):
-  ext = os.path.splitext(image_path)[1]
-  with gfile.GFile(image_path, 'w') as f:
-    img_str = cv2.imencode(ext, rgb[:,:,::-1])[1].tostring()
-    f.write(img_str)
+    ext = os.path.splitext(image_path)[1]
+    with gfile.GFile(image_path, 'w') as f:
+        img_str = cv2.imencode(ext, rgb[:, :, ::-1])[1].tostring()
+        f.write(img_str)
+
 
 def read_image(image_path, type='rgb'):
-  with fopen(image_path, 'r') as f:
-    I = PIL.Image.open(f)
-    II = np.array(I)
-    if type == 'rgb':
-      II = II[:,:,:3]
-  return II
+    with fopen(image_path, 'r') as f:
+        I = PIL.Image.open(f)
+        II = np.array(I)
+        if type == 'rgb':
+            II = II[:, :, :3]
+    return II

@@ -73,7 +73,6 @@ flags.DEFINE_string(
     'The threshold for what messages will be logged. One of DEBUG, INFO, WARN, '
     'ERROR, or FATAL.')
 
-
 # To register an algorithm:
 # 1) Add dependency in the BUILD file to this build rule.
 # 2) Import the algorithm's module at the top of this file.
@@ -89,54 +88,54 @@ ALGORITHM_REGISTRATION = {
 
 
 def get_namespace(config_string):
-  """Get namespace for the selected algorithm.
+    """Get namespace for the selected algorithm.
 
-  Users who want to add additional algorithm types should modify this function.
-  The algorithm's namespace should contain the following functions:
-    run_training: Run the main training loop.
-    define_tuner_hparam_space: Return the hparam tuning space for the algo.
-    write_hparams_to_config: Helper for tuning. Write hparams chosen for tuning
-        to the Config object.
-  Look at pg_train.py and ga_train.py for function signatures and
-  implementations.
+    Users who want to add additional algorithm types should modify this function.
+    The algorithm's namespace should contain the following functions:
+      run_training: Run the main training loop.
+      define_tuner_hparam_space: Return the hparam tuning space for the algo.
+      write_hparams_to_config: Helper for tuning. Write hparams chosen for tuning
+          to the Config object.
+    Look at pg_train.py and ga_train.py for function signatures and
+    implementations.
 
-  Args:
-    config_string: String representation of a Config object. This will get
-        parsed into a Config in order to determine what algorithm to use.
+    Args:
+      config_string: String representation of a Config object. This will get
+          parsed into a Config in order to determine what algorithm to use.
 
-  Returns:
-    algorithm_namespace: The module corresponding to the algorithm given in the
-        config.
-    config: The Config object resulting from parsing `config_string`.
+    Returns:
+      algorithm_namespace: The module corresponding to the algorithm given in the
+          config.
+      config: The Config object resulting from parsing `config_string`.
 
-  Raises:
-    ValueError: If config.agent.algorithm is not one of the registered
-        algorithms.
-  """
-  config = defaults.default_config_with_updates(config_string)
-  if config.agent.algorithm not in ALGORITHM_REGISTRATION:
-    raise ValueError('Unknown algorithm type "%s"' % (config.agent.algorithm,))
-  else:
-    return ALGORITHM_REGISTRATION[config.agent.algorithm], config
+    Raises:
+      ValueError: If config.agent.algorithm is not one of the registered
+          algorithms.
+    """
+    config = defaults.default_config_with_updates(config_string)
+    if config.agent.algorithm not in ALGORITHM_REGISTRATION:
+        raise ValueError('Unknown algorithm type "%s"' % (config.agent.algorithm,))
+    else:
+        return ALGORITHM_REGISTRATION[config.agent.algorithm], config
 
 
 def main(argv):
-  del argv  # Unused.
+    del argv  # Unused.
 
-  logging.set_verbosity(FLAGS.log_level)
+    logging.set_verbosity(FLAGS.log_level)
 
-  flags.mark_flag_as_required('logdir')
-  if FLAGS.num_workers <= 0:
-    raise ValueError('num_workers flag must be greater than 0.')
-  if FLAGS.task_id < 0:
-    raise ValueError('task_id flag must be greater than or equal to 0.')
-  if FLAGS.task_id >= FLAGS.num_workers:
-    raise ValueError(
-        'task_id flag must be strictly less than num_workers flag.')
+    flags.mark_flag_as_required('logdir')
+    if FLAGS.num_workers <= 0:
+        raise ValueError('num_workers flag must be greater than 0.')
+    if FLAGS.task_id < 0:
+        raise ValueError('task_id flag must be greater than or equal to 0.')
+    if FLAGS.task_id >= FLAGS.num_workers:
+        raise ValueError(
+            'task_id flag must be strictly less than num_workers flag.')
 
-  ns, _ = get_namespace(FLAGS.config)
-  ns.run_training(is_chief=FLAGS.task_id == 0)
+    ns, _ = get_namespace(FLAGS.config)
+    ns.run_training(is_chief=FLAGS.task_id == 0)
 
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)

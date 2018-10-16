@@ -16,10 +16,9 @@
 """Training for Domain Separation Networks (DSNs)."""
 from __future__ import division
 
-import tensorflow as tf
-
-from domain_adaptation.datasets import dataset_factory
 import dsn
+import tensorflow as tf
+from domain_adaptation.datasets import dataset_factory
 
 slim = tf.contrib.slim
 FLAGS = tf.app.flags.FLAGS
@@ -137,142 +136,144 @@ tf.app.flags.DEFINE_string('recon_loss_name', 'sum_of_pairwise_squares',
 tf.app.flags.DEFINE_string('basic_tower', 'pose_mini',
                            'The basic tower building block.')
 
+
 def provide_batch_fn():
-  """ The provide_batch function to use. """
-  return dataset_factory.provide_batch
+    """ The provide_batch function to use. """
+    return dataset_factory.provide_batch
+
 
 def main(_):
-  model_params = {
-      'use_separation': FLAGS.use_separation,
-      'domain_separation_startpoint': FLAGS.domain_separation_startpoint,
-      'layers_to_regularize': FLAGS.layers_to_regularize,
-      'alpha_weight': FLAGS.alpha_weight,
-      'beta_weight': FLAGS.beta_weight,
-      'gamma_weight': FLAGS.gamma_weight,
-      'pose_weight': FLAGS.pose_weight,
-      'recon_loss_name': FLAGS.recon_loss_name,
-      'decoder_name': FLAGS.decoder_name,
-      'encoder_name': FLAGS.encoder_name,
-      'weight_decay': FLAGS.weight_decay,
-      'batch_size': FLAGS.batch_size,
-      'use_logging': FLAGS.use_logging,
-      'ps_tasks': FLAGS.ps_tasks,
-      'task': FLAGS.task,
-  }
-  g = tf.Graph()
-  with g.as_default():
-    with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
-      # Load the data.
-      source_images, source_labels = provide_batch_fn()(
-          FLAGS.source_dataset, 'train', FLAGS.dataset_dir, FLAGS.num_readers,
-          FLAGS.batch_size, FLAGS.num_preprocessing_threads)
-      target_images, target_labels = provide_batch_fn()(
-          FLAGS.target_dataset, 'train', FLAGS.dataset_dir, FLAGS.num_readers,
-          FLAGS.batch_size, FLAGS.num_preprocessing_threads)
+    model_params = {
+        'use_separation': FLAGS.use_separation,
+        'domain_separation_startpoint': FLAGS.domain_separation_startpoint,
+        'layers_to_regularize': FLAGS.layers_to_regularize,
+        'alpha_weight': FLAGS.alpha_weight,
+        'beta_weight': FLAGS.beta_weight,
+        'gamma_weight': FLAGS.gamma_weight,
+        'pose_weight': FLAGS.pose_weight,
+        'recon_loss_name': FLAGS.recon_loss_name,
+        'decoder_name': FLAGS.decoder_name,
+        'encoder_name': FLAGS.encoder_name,
+        'weight_decay': FLAGS.weight_decay,
+        'batch_size': FLAGS.batch_size,
+        'use_logging': FLAGS.use_logging,
+        'ps_tasks': FLAGS.ps_tasks,
+        'task': FLAGS.task,
+    }
+    g = tf.Graph()
+    with g.as_default():
+        with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
+            # Load the data.
+            source_images, source_labels = provide_batch_fn()(
+                FLAGS.source_dataset, 'train', FLAGS.dataset_dir, FLAGS.num_readers,
+                FLAGS.batch_size, FLAGS.num_preprocessing_threads)
+            target_images, target_labels = provide_batch_fn()(
+                FLAGS.target_dataset, 'train', FLAGS.dataset_dir, FLAGS.num_readers,
+                FLAGS.batch_size, FLAGS.num_preprocessing_threads)
 
-      # In the unsupervised case all the samples in the labeled
-      # domain are from the source domain.
-      domain_selection_mask = tf.fill((source_images.get_shape().as_list()[0],),
-                                      True)
+            # In the unsupervised case all the samples in the labeled
+            # domain are from the source domain.
+            domain_selection_mask = tf.fill((source_images.get_shape().as_list()[0],),
+                                            True)
 
-      # When using the semisupervised model we include labeled target data in
-      # the source labelled data.
-      if FLAGS.target_labeled_dataset != 'none':
-        # 1000 is the maximum number of labelled target samples that exists in
-        # the datasets.
-        target_semi_images, target_semi_labels = provide_batch_fn()(
-            FLAGS.target_labeled_dataset, 'train', FLAGS.batch_size)
+            # When using the semisupervised model we include labeled target data in
+            # the source labelled data.
+            if FLAGS.target_labeled_dataset != 'none':
+                # 1000 is the maximum number of labelled target samples that exists in
+                # the datasets.
+                target_semi_images, target_semi_labels = provide_batch_fn()(
+                    FLAGS.target_labeled_dataset, 'train', FLAGS.batch_size)
 
-        # Calculate the proportion of source domain samples in the semi-
-        # supervised setting, so that the proportion is set accordingly in the
-        # batches.
-        proportion = float(source_labels['num_train_samples']) / (
-            source_labels['num_train_samples'] +
-            target_semi_labels['num_train_samples'])
+                # Calculate the proportion of source domain samples in the semi-
+                # supervised setting, so that the proportion is set accordingly in the
+                # batches.
+                proportion = float(source_labels['num_train_samples']) / (
+                        source_labels['num_train_samples'] +
+                        target_semi_labels['num_train_samples'])
 
-        rnd_tensor = tf.random_uniform(
-            (target_semi_images.get_shape().as_list()[0],))
+                rnd_tensor = tf.random_uniform(
+                    (target_semi_images.get_shape().as_list()[0],))
 
-        domain_selection_mask = rnd_tensor < proportion
-        source_images = tf.where(domain_selection_mask, source_images,
-                                 target_semi_images)
-        source_class_labels = tf.where(domain_selection_mask,
-                                       source_labels['classes'],
-                                       target_semi_labels['classes'])
+                domain_selection_mask = rnd_tensor < proportion
+                source_images = tf.where(domain_selection_mask, source_images,
+                                         target_semi_images)
+                source_class_labels = tf.where(domain_selection_mask,
+                                               source_labels['classes'],
+                                               target_semi_labels['classes'])
 
-        if 'quaternions' in source_labels:
-          source_pose_labels = tf.where(domain_selection_mask,
-                                        source_labels['quaternions'],
-                                        target_semi_labels['quaternions'])
-          (source_images, source_class_labels, source_pose_labels,
-           domain_selection_mask) = tf.train.shuffle_batch(
-               [
-                   source_images, source_class_labels, source_pose_labels,
-                   domain_selection_mask
-               ],
-               FLAGS.batch_size,
-               50000,
-               5000,
-               num_threads=1,
-               enqueue_many=True)
+                if 'quaternions' in source_labels:
+                    source_pose_labels = tf.where(domain_selection_mask,
+                                                  source_labels['quaternions'],
+                                                  target_semi_labels['quaternions'])
+                    (source_images, source_class_labels, source_pose_labels,
+                     domain_selection_mask) = tf.train.shuffle_batch(
+                        [
+                            source_images, source_class_labels, source_pose_labels,
+                            domain_selection_mask
+                        ],
+                        FLAGS.batch_size,
+                        50000,
+                        5000,
+                        num_threads=1,
+                        enqueue_many=True)
 
-        else:
-          (source_images, source_class_labels,
-           domain_selection_mask) = tf.train.shuffle_batch(
-               [source_images, source_class_labels, domain_selection_mask],
-               FLAGS.batch_size,
-               50000,
-               5000,
-               num_threads=1,
-               enqueue_many=True)
-        source_labels = {}
-        source_labels['classes'] = source_class_labels
-        if 'quaternions' in source_labels:
-          source_labels['quaternions'] = source_pose_labels
+                else:
+                    (source_images, source_class_labels,
+                     domain_selection_mask) = tf.train.shuffle_batch(
+                        [source_images, source_class_labels, domain_selection_mask],
+                        FLAGS.batch_size,
+                        50000,
+                        5000,
+                        num_threads=1,
+                        enqueue_many=True)
+                source_labels = {}
+                source_labels['classes'] = source_class_labels
+                if 'quaternions' in source_labels:
+                    source_labels['quaternions'] = source_pose_labels
 
-      slim.get_or_create_global_step()
-      tf.summary.image('source_images', source_images, max_outputs=3)
-      tf.summary.image('target_images', target_images, max_outputs=3)
+            slim.get_or_create_global_step()
+            tf.summary.image('source_images', source_images, max_outputs=3)
+            tf.summary.image('target_images', target_images, max_outputs=3)
 
-      dsn.create_model(
-          source_images,
-          source_labels,
-          domain_selection_mask,
-          target_images,
-          target_labels,
-          FLAGS.similarity_loss,
-          model_params,
-          basic_tower_name=FLAGS.basic_tower)
+            dsn.create_model(
+                source_images,
+                source_labels,
+                domain_selection_mask,
+                target_images,
+                target_labels,
+                FLAGS.similarity_loss,
+                model_params,
+                basic_tower_name=FLAGS.basic_tower)
 
-      # Configure the optimization scheme:
-      learning_rate = tf.train.exponential_decay(
-          FLAGS.learning_rate,
-          slim.get_or_create_global_step(),
-          FLAGS.decay_steps,
-          FLAGS.decay_rate,
-          staircase=True,
-          name='learning_rate')
+            # Configure the optimization scheme:
+            learning_rate = tf.train.exponential_decay(
+                FLAGS.learning_rate,
+                slim.get_or_create_global_step(),
+                FLAGS.decay_steps,
+                FLAGS.decay_rate,
+                staircase=True,
+                name='learning_rate')
 
-      tf.summary.scalar('learning_rate', learning_rate)
-      tf.summary.scalar('total_loss', tf.losses.get_total_loss())
+            tf.summary.scalar('learning_rate', learning_rate)
+            tf.summary.scalar('total_loss', tf.losses.get_total_loss())
 
-      opt = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
-      tf.logging.set_verbosity(tf.logging.INFO)
-      # Run training.
-      loss_tensor = slim.learning.create_train_op(
-          slim.losses.get_total_loss(),
-          opt,
-          summarize_gradients=True,
-          colocate_gradients_with_ops=True)
-      slim.learning.train(
-          train_op=loss_tensor,
-          logdir=FLAGS.train_log_dir,
-          master=FLAGS.master,
-          is_chief=FLAGS.task == 0,
-          number_of_steps=FLAGS.max_number_of_steps,
-          save_summaries_secs=FLAGS.save_summaries_secs,
-          save_interval_secs=FLAGS.save_interval_secs)
+            opt = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
+            tf.logging.set_verbosity(tf.logging.INFO)
+            # Run training.
+            loss_tensor = slim.learning.create_train_op(
+                slim.losses.get_total_loss(),
+                opt,
+                summarize_gradients=True,
+                colocate_gradients_with_ops=True)
+            slim.learning.train(
+                train_op=loss_tensor,
+                logdir=FLAGS.train_log_dir,
+                master=FLAGS.master,
+                is_chief=FLAGS.task == 0,
+                number_of_steps=FLAGS.max_number_of_steps,
+                save_summaries_secs=FLAGS.save_summaries_secs,
+                save_interval_secs=FLAGS.save_interval_secs)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()

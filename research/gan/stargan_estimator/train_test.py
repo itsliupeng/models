@@ -20,10 +20,9 @@ from __future__ import print_function
 
 import os
 
-from absl import flags
 import tensorflow as tf
-
 import train
+from absl import flags
 
 FLAGS = flags.FLAGS
 mock = tf.test.mock
@@ -33,41 +32,39 @@ TESTDATA_DIR = 'google3/third_party/tensorflow_models/gan/stargan_estimator/test
 
 
 def _test_generator(input_images, _):
-  """Simple generator function."""
-  return input_images * tf.get_variable('dummy_g', initializer=2.0)
+    """Simple generator function."""
+    return input_images * tf.get_variable('dummy_g', initializer=2.0)
 
 
 def _test_discriminator(inputs, num_domains):
-  """Differentiable dummy discriminator for StarGAN."""
+    """Differentiable dummy discriminator for StarGAN."""
 
-  hidden = tf.contrib.layers.flatten(inputs)
+    hidden = tf.contrib.layers.flatten(inputs)
 
-  output_src = tf.reduce_mean(hidden, axis=1)
+    output_src = tf.reduce_mean(hidden, axis=1)
 
-  output_cls = tf.contrib.layers.fully_connected(
-      inputs=hidden,
-      num_outputs=num_domains,
-      activation_fn=None,
-      normalizer_fn=None,
-      biases_initializer=None)
-  return output_src, output_cls
+    output_cls = tf.contrib.layers.fully_connected(
+        inputs=hidden,
+        num_outputs=num_domains,
+        activation_fn=None,
+        normalizer_fn=None,
+        biases_initializer=None)
+    return output_src, output_cls
 
 
 class TrainTest(tf.test.TestCase):
 
-  def test_main(self):
-
-    FLAGS.image_file_patterns = [
-        os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'black/*.jpg'),
-        os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'blond/*.jpg'),
-        os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'brown/*.jpg'),
-    ]
-    FLAGS.max_number_of_steps = 1
-    FLAGS.steps_per_eval = 1
-    FLAGS.batch_size = 1
-    train.main(None, _test_generator, _test_discriminator)
+    def test_main(self):
+        FLAGS.image_file_patterns = [
+            os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'black/*.jpg'),
+            os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'blond/*.jpg'),
+            os.path.join(FLAGS.test_srcdir, TESTDATA_DIR, 'brown/*.jpg'),
+        ]
+        FLAGS.max_number_of_steps = 1
+        FLAGS.steps_per_eval = 1
+        FLAGS.batch_size = 1
+        train.main(None, _test_generator, _test_discriminator)
 
 
 if __name__ == '__main__':
-  tf.test.main()
-
+    tf.test.main()

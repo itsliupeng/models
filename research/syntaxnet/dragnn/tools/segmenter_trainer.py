@@ -14,34 +14,23 @@
 # ==============================================================================
 """A program to train a tensorflow neural net segmenter from a conll file."""
 
-
-
-
 import base64
 import os
 import os.path
-import random
-import time
-from absl import flags
+
 import tensorflow as tf
-
-from tensorflow.python.platform import gfile
-from tensorflow.python.platform import tf_logging as logging
-
-from google.protobuf import text_format
-
-from syntaxnet.ops import gen_parser_ops
-from syntaxnet import task_spec_pb2
-from syntaxnet import sentence_pb2
-
+from absl import flags
 from dragnn.protos import spec_pb2
-from dragnn.python.sentence_io import ConllSentenceReader
-
 from dragnn.python import evaluation
 from dragnn.python import graph_builder
 from dragnn.python import lexicon
 from dragnn.python import spec_builder
 from dragnn.python import trainer_lib
+from dragnn.python.sentence_io import ConllSentenceReader
+from google.protobuf import text_format
+from syntaxnet.ops import gen_parser_ops
+from tensorflow.python.platform import gfile
+from tensorflow.python.platform import tf_logging as logging
 
 FLAGS = flags.FLAGS
 
@@ -72,102 +61,102 @@ flags.DEFINE_string('hyperparams',
 
 
 def main(unused_argv):
-  logging.set_verbosity(logging.INFO)
+    logging.set_verbosity(logging.INFO)
 
-  if not gfile.IsDirectory(FLAGS.resource_path):
-    gfile.MakeDirs(FLAGS.resource_path)
+    if not gfile.IsDirectory(FLAGS.resource_path):
+        gfile.MakeDirs(FLAGS.resource_path)
 
-  # Constructs lexical resources for SyntaxNet in the given resource path, from
-  # the training data.
-  if FLAGS.compute_lexicon:
-    logging.info('Computing lexicon...')
-    lexicon.build_lexicon(FLAGS.resource_path, FLAGS.training_corpus_path)
+    # Constructs lexical resources for SyntaxNet in the given resource path, from
+    # the training data.
+    if FLAGS.compute_lexicon:
+        logging.info('Computing lexicon...')
+        lexicon.build_lexicon(FLAGS.resource_path, FLAGS.training_corpus_path)
 
-  # Construct the "lookahead" ComponentSpec. This is a simple right-to-left RNN
-  # sequence model, which encodes the context to the right of each token. It has
-  # no loss except for the downstream components.
-  lookahead = spec_builder.ComponentSpecBuilder('lookahead')
-  lookahead.set_network_unit(
-      name='wrapped_units.LayerNormBasicLSTMNetwork', hidden_layer_sizes='256')
-  lookahead.set_transition_system(name='shift-only', left_to_right='false')
-  lookahead.add_fixed_feature(name='char',
-                              fml='input(-1).char input.char input(1).char',
-                              embedding_dim=32)
-  lookahead.add_fixed_feature(name='char-bigram',
-                              fml='input.char-bigram',
-                              embedding_dim=32)
-  lookahead.fill_from_resources(FLAGS.resource_path, FLAGS.tf_master)
+    # Construct the "lookahead" ComponentSpec. This is a simple right-to-left RNN
+    # sequence model, which encodes the context to the right of each token. It has
+    # no loss except for the downstream components.
+    lookahead = spec_builder.ComponentSpecBuilder('lookahead')
+    lookahead.set_network_unit(
+        name='wrapped_units.LayerNormBasicLSTMNetwork', hidden_layer_sizes='256')
+    lookahead.set_transition_system(name='shift-only', left_to_right='false')
+    lookahead.add_fixed_feature(name='char',
+                                fml='input(-1).char input.char input(1).char',
+                                embedding_dim=32)
+    lookahead.add_fixed_feature(name='char-bigram',
+                                fml='input.char-bigram',
+                                embedding_dim=32)
+    lookahead.fill_from_resources(FLAGS.resource_path, FLAGS.tf_master)
 
-  # Construct the ComponentSpec for segmentation.
-  segmenter = spec_builder.ComponentSpecBuilder('segmenter')
-  segmenter.set_network_unit(
-      name='wrapped_units.LayerNormBasicLSTMNetwork', hidden_layer_sizes='128')
-  segmenter.set_transition_system(name='binary-segment-transitions')
-  segmenter.add_token_link(
-      source=lookahead, fml='input.focus stack.focus',
-      embedding_dim=64)
-  segmenter.fill_from_resources(FLAGS.resource_path, FLAGS.tf_master)
+    # Construct the ComponentSpec for segmentation.
+    segmenter = spec_builder.ComponentSpecBuilder('segmenter')
+    segmenter.set_network_unit(
+        name='wrapped_units.LayerNormBasicLSTMNetwork', hidden_layer_sizes='128')
+    segmenter.set_transition_system(name='binary-segment-transitions')
+    segmenter.add_token_link(
+        source=lookahead, fml='input.focus stack.focus',
+        embedding_dim=64)
+    segmenter.fill_from_resources(FLAGS.resource_path, FLAGS.tf_master)
 
-  # Build and write master_spec.
-  master_spec = spec_pb2.MasterSpec()
-  master_spec.component.extend([lookahead.spec, segmenter.spec])
-  logging.info('Constructed master spec: %s', str(master_spec))
-  with gfile.GFile(FLAGS.resource_path + '/master_spec', 'w') as f:
-    f.write(str(master_spec).encode('utf-8'))
+    # Build and write master_spec.
+    master_spec = spec_pb2.MasterSpec()
+    master_spec.component.extend([lookahead.spec, segmenter.spec])
+    logging.info('Constructed master spec: %s', str(master_spec))
+    with gfile.GFile(FLAGS.resource_path + '/master_spec', 'w') as f:
+        f.write(str(master_spec).encode('utf-8'))
 
-  hyperparam_config = spec_pb2.GridPoint()
-  try:
-    text_format.Parse(FLAGS.hyperparams, hyperparam_config)
-  except text_format.ParseError:
-    text_format.Parse(base64.b64decode(FLAGS.hyperparams), hyperparam_config)
+    hyperparam_config = spec_pb2.GridPoint()
+    try:
+        text_format.Parse(FLAGS.hyperparams, hyperparam_config)
+    except text_format.ParseError:
+        text_format.Parse(base64.b64decode(FLAGS.hyperparams), hyperparam_config)
 
-  # Build the TensorFlow graph.
-  graph = tf.Graph()
-  with graph.as_default():
-    builder = graph_builder.MasterBuilder(master_spec, hyperparam_config)
-    component_targets = spec_builder.default_targets_from_spec(master_spec)
-    trainers = [
-        builder.add_training_from_config(target) for target in component_targets
-    ]
-    assert len(trainers) == 1
-    annotator = builder.add_annotation()
-    builder.add_saver()
+    # Build the TensorFlow graph.
+    graph = tf.Graph()
+    with graph.as_default():
+        builder = graph_builder.MasterBuilder(master_spec, hyperparam_config)
+        component_targets = spec_builder.default_targets_from_spec(master_spec)
+        trainers = [
+            builder.add_training_from_config(target) for target in component_targets
+        ]
+        assert len(trainers) == 1
+        annotator = builder.add_annotation()
+        builder.add_saver()
 
-  # Read in serialized protos from training data.
-  training_set = ConllSentenceReader(
-      FLAGS.training_corpus_path, projectivize=False).corpus()
-  dev_set = ConllSentenceReader(
-      FLAGS.dev_corpus_path, projectivize=False).corpus()
+    # Read in serialized protos from training data.
+    training_set = ConllSentenceReader(
+        FLAGS.training_corpus_path, projectivize=False).corpus()
+    dev_set = ConllSentenceReader(
+        FLAGS.dev_corpus_path, projectivize=False).corpus()
 
-  # Convert word-based docs to char-based documents for segmentation training
-  # and evaluation.
-  with tf.Session(graph=tf.Graph()) as tmp_session:
-    char_training_set_op = gen_parser_ops.segmenter_training_data_constructor(
-        training_set)
-    char_dev_set_op = gen_parser_ops.char_token_generator(dev_set)
-    char_training_set = tmp_session.run(char_training_set_op)
-    char_dev_set = tmp_session.run(char_dev_set_op)
+    # Convert word-based docs to char-based documents for segmentation training
+    # and evaluation.
+    with tf.Session(graph=tf.Graph()) as tmp_session:
+        char_training_set_op = gen_parser_ops.segmenter_training_data_constructor(
+            training_set)
+        char_dev_set_op = gen_parser_ops.char_token_generator(dev_set)
+        char_training_set = tmp_session.run(char_training_set_op)
+        char_dev_set = tmp_session.run(char_dev_set_op)
 
-  # Ready to train!
-  logging.info('Training on %d sentences.', len(training_set))
-  logging.info('Tuning on %d sentences.', len(dev_set))
+    # Ready to train!
+    logging.info('Training on %d sentences.', len(training_set))
+    logging.info('Tuning on %d sentences.', len(dev_set))
 
-  pretrain_steps = [0]
-  train_steps = [FLAGS.num_epochs * len(training_set)]
+    pretrain_steps = [0]
+    train_steps = [FLAGS.num_epochs * len(training_set)]
 
-  tf.logging.info('Creating TensorFlow checkpoint dir...')
-  gfile.MakeDirs(os.path.dirname(FLAGS.checkpoint_filename))
-  summary_writer = trainer_lib.get_summary_writer(FLAGS.tensorboard_dir)
+    tf.logging.info('Creating TensorFlow checkpoint dir...')
+    gfile.MakeDirs(os.path.dirname(FLAGS.checkpoint_filename))
+    summary_writer = trainer_lib.get_summary_writer(FLAGS.tensorboard_dir)
 
-  with tf.Session(FLAGS.tf_master, graph=graph) as sess:
-    # Make sure to re-initialize all underlying state.
-    sess.run(tf.global_variables_initializer())
-    trainer_lib.run_training(
-        sess, trainers, annotator, evaluation.segmentation_summaries,
-        pretrain_steps, train_steps, char_training_set, char_dev_set, dev_set,
-        FLAGS.batch_size, summary_writer, FLAGS.report_every, builder.saver,
-        FLAGS.checkpoint_filename)
+    with tf.Session(FLAGS.tf_master, graph=graph) as sess:
+        # Make sure to re-initialize all underlying state.
+        sess.run(tf.global_variables_initializer())
+        trainer_lib.run_training(
+            sess, trainers, annotator, evaluation.segmentation_summaries,
+            pretrain_steps, train_steps, char_training_set, char_dev_set, dev_set,
+            FLAGS.batch_size, summary_writer, FLAGS.report_every, builder.saver,
+            FLAGS.checkpoint_filename)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+    tf.app.run()

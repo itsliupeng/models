@@ -19,25 +19,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from six.moves import urllib
 import os
 import tarfile
+
+from six.moves import urllib
 
 FILE_URI = 'https://storage.googleapis.com/pate-votes/votes.gz'
 DATA_DIR = 'data/'
 
 
 def download():
-  print('Downloading ' + FILE_URI)
-  tar_filename, _ = urllib.request.urlretrieve(FILE_URI)
-  print('Unpacking ' + tar_filename)
-  with tarfile.open(tar_filename, "r:gz") as tar:
-    tar.extractall(DATA_DIR)
-  print('Done!')
+    print('Downloading ' + FILE_URI)
+    tar_filename, _ = urllib.request.urlretrieve(FILE_URI)
+    print('Unpacking ' + tar_filename)
+    with tarfile.open(tar_filename, "r:gz") as tar:
+        tar.extractall(DATA_DIR)
+    print('Done!')
 
 
 if __name__ == '__main__':
-  if not os.path.exists(DATA_DIR):
-    print('Data directory does not exist. Creating ' + DATA_DIR)
-    os.makedirs(DATA_DIR)
-  download()
+    if not os.path.exists(DATA_DIR):
+        print('Data directory does not exist. Creating ' + DATA_DIR)
+        os.makedirs(DATA_DIR)
+    download()

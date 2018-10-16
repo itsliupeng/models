@@ -5,9 +5,8 @@ from __future__ import print_function
 import numpy as np
 import sklearn.preprocessing as prep
 import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
-
 from autoencoder_models.VariationalAutoencoder import VariationalAutoencoder
+from tensorflow.examples.tutorials.mnist import input_data
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
@@ -34,7 +33,7 @@ display_step = 1
 autoencoder = VariationalAutoencoder(
     n_input=784,
     n_hidden=200,
-    optimizer=tf.train.AdamOptimizer(learning_rate = 0.001))
+    optimizer=tf.train.AdamOptimizer(learning_rate=0.001))
 
 for epoch in range(training_epochs):
     avg_cost = 0.

@@ -24,10 +24,10 @@ from object_detection.utils import context_manager
 
 class ContextManagerTest(tf.test.TestCase):
 
-  def test_identity_context_manager(self):
-    with context_manager.IdentityContextManager() as identity_context:
-      self.assertIsNone(identity_context)
+    def test_identity_context_manager(self):
+        with context_manager.IdentityContextManager() as identity_context:
+            self.assertIsNone(identity_context)
 
 
 if __name__ == '__main__':
-  tf.test.main()
+    tf.test.main()

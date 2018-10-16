@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from scipy import ndimage
-import tensorflow as tf
-from spatial_transformer import transformer
 import numpy as np
-import matplotlib.pyplot as plt
+import tensorflow as tf
+from scipy import ndimage
+from spatial_transformer import transformer
 
 # %% Create a batch of three images (1600 x 1200)
 # %% Image retrieved from:
@@ -39,7 +38,6 @@ x = tf.cast(batch, 'float32')
 
 # %% Create localisation network and convolutional layer
 with tf.variable_scope('spatial_transformer_0'):
-
     # %% Create a fully-connected layer with 6 output nodes
     n_fc = 6
     W_fc1 = tf.Variable(tf.zeros([1200 * 1600 * 3, n_fc]), name='W_fc1')

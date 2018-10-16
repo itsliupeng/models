@@ -5,9 +5,8 @@ from __future__ import print_function
 import numpy as np
 import sklearn.preprocessing as prep
 import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
-
 from autoencoder_models.DenoisingAutoencoder import AdditiveGaussianNoiseAutoencoder
+from tensorflow.examples.tutorials.mnist import input_data
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
@@ -35,7 +34,7 @@ autoencoder = AdditiveGaussianNoiseAutoencoder(
     n_input=784,
     n_hidden=200,
     transfer_function=tf.nn.softplus,
-    optimizer=tf.train.AdamOptimizer(learning_rate = 0.001),
+    optimizer=tf.train.AdamOptimizer(learning_rate=0.001),
     scale=0.01)
 
 for epoch in range(training_epochs):

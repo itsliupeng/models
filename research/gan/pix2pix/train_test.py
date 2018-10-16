@@ -18,12 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
-from absl import flags
-from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import train
+from absl import flags
+from absl.testing import parameterized
 
 FLAGS = flags.FLAGS
 mock = tf.test.mock
@@ -31,22 +30,22 @@ mock = tf.test.mock
 
 class TrainTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('NoAdversarialLoss', 0.0),
-      ('AdversarialLoss', 1.0))
-  def test_build_graph(self, weight_factor):
-    FLAGS.max_number_of_steps = 0
-    FLAGS.weight_factor = weight_factor
-    FLAGS.batch_size = 9
-    FLAGS.patch_size = 32
+    @parameterized.named_parameters(
+        ('NoAdversarialLoss', 0.0),
+        ('AdversarialLoss', 1.0))
+    def test_build_graph(self, weight_factor):
+        FLAGS.max_number_of_steps = 0
+        FLAGS.weight_factor = weight_factor
+        FLAGS.batch_size = 9
+        FLAGS.patch_size = 32
 
-    mock_imgs = np.zeros(
-        [FLAGS.batch_size, FLAGS.patch_size, FLAGS.patch_size, 3],
-        dtype=np.float32)
-    with mock.patch.object(train, 'data_provider') as mock_data_provider:
-      mock_data_provider.provide_data.return_value = mock_imgs
-      train.main(None)
+        mock_imgs = np.zeros(
+            [FLAGS.batch_size, FLAGS.patch_size, FLAGS.patch_size, 3],
+            dtype=np.float32)
+        with mock.patch.object(train, 'data_provider') as mock_data_provider:
+            mock_data_provider.provide_data.return_value = mock_imgs
+            train.main(None)
+
 
 if __name__ == '__main__':
-  tf.test.main()
-
+    tf.test.main()

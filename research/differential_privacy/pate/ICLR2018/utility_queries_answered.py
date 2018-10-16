@@ -2,10 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
+import matplotlib
 from absl import app
 from absl import flags
-import matplotlib
-import os
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -39,37 +40,38 @@ acc_gnmax_aggressive = [17.8, 26.8, 39.3, 48, 55.7, 61, 62.8, 64.8, 65.4, 66.7,
 
 
 def main(argv):
-  del argv  # Unused.
+    del argv  # Unused.
 
-  plt.close('all')
-  fig, ax = plt.subplots()
-  fig.set_figheight(4.7)
-  fig.set_figwidth(5)
-  ax.plot(qa_lnmax, acc_lnmax, color='r', ls='--', linewidth=5., marker='o',
-          alpha=.5, label='LNMax')
-  ax.plot(qa_gnmax, acc_gnmax, color='g', ls='-', linewidth=5., marker='o',
-          alpha=.5, label='Confident-GNMax')
-  # ax.plot(qa_gnmax_aggressive, acc_gnmax_aggressive, color='b', ls='-', marker='o', alpha=.5, label='Confident-GNMax (aggressive)')
-  plt.xticks([0, 2000, 4000, 6000])
-  plt.xlim([0, 6000])
-  # ax.set_yscale('log')
-  plt.ylim([65, 76])
-  ax.tick_params(labelsize=14)
-  plt.xlabel('Number of queries answered', fontsize=16)
-  plt.ylabel('Student test accuracy (%)', fontsize=16)
-  plt.legend(loc=2, prop={'size': 16})
+    plt.close('all')
+    fig, ax = plt.subplots()
+    fig.set_figheight(4.7)
+    fig.set_figwidth(5)
+    ax.plot(qa_lnmax, acc_lnmax, color='r', ls='--', linewidth=5., marker='o',
+            alpha=.5, label='LNMax')
+    ax.plot(qa_gnmax, acc_gnmax, color='g', ls='-', linewidth=5., marker='o',
+            alpha=.5, label='Confident-GNMax')
+    # ax.plot(qa_gnmax_aggressive, acc_gnmax_aggressive, color='b', ls='-', marker='o', alpha=.5, label='Confident-GNMax (aggressive)')
+    plt.xticks([0, 2000, 4000, 6000])
+    plt.xlim([0, 6000])
+    # ax.set_yscale('log')
+    plt.ylim([65, 76])
+    ax.tick_params(labelsize=14)
+    plt.xlabel('Number of queries answered', fontsize=16)
+    plt.ylabel('Student test accuracy (%)', fontsize=16)
+    plt.legend(loc=2, prop={'size': 16})
 
-  x = [400, 2116, 4600, 4680]
-  y = [69.5, 68.5, 74, 72.5]
-  annotations = [0.76, 2.89, 1.42, 5.76]
-  color_annotations = ['g', 'r', 'g', 'r']
-  for i, txt in enumerate(annotations):
-    ax.annotate(r'${\varepsilon=}$' + str(txt), (x[i], y[i]), fontsize=16,
-                color=color_annotations[i])
+    x = [400, 2116, 4600, 4680]
+    y = [69.5, 68.5, 74, 72.5]
+    annotations = [0.76, 2.89, 1.42, 5.76]
+    color_annotations = ['g', 'r', 'g', 'r']
+    for i, txt in enumerate(annotations):
+        ax.annotate(r'${\varepsilon=}$' + str(txt), (x[i], y[i]), fontsize=16,
+                    color=color_annotations[i])
 
-  plot_filename = os.path.expanduser(FLAGS.plot_file)
-  plt.savefig(plot_filename, bbox_inches='tight')
-  plt.show()
+    plot_filename = os.path.expanduser(FLAGS.plot_file)
+    plt.savefig(plot_filename, bbox_inches='tight')
+    plt.show()
+
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)

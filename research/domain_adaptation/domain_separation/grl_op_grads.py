@@ -19,16 +19,16 @@ import tensorflow as tf
 
 @tf.RegisterGradient("GradientReversal")
 def _GradientReversalGrad(_, grad):
-  """The gradients for `gradient_reversal`.
-
-  Args:
-    _: The `gradient_reversal` `Operation` that we are differentiating,
-      which we can use to find the inputs and outputs of the original op.
-    grad: Gradient with respect to the output of the `gradient_reversal` op.
-
-  Returns:
-    Gradient with respect to the input of `gradient_reversal`, which is simply
-    the negative of the input gradient.
-
-  """
-  return tf.negative(grad)
+    """The gradients for `gradient_reversal`.
+  
+    Args:
+      _: The `gradient_reversal` `Operation` that we are differentiating,
+        which we can use to find the inputs and outputs of the original op.
+      grad: Gradient with respect to the output of the `gradient_reversal` op.
+  
+    Returns:
+      Gradient with respect to the input of `gradient_reversal`, which is simply
+      the negative of the input gradient.
+  
+    """
+    return tf.negative(grad)

@@ -19,8 +19,8 @@ r"""Utility functions for Real NVP.
 # pylint: disable=dangerous-default-value
 
 import numpy
-from six.moves import xrange
 import tensorflow as tf
+from six.moves import xrange
 from tensorflow.python.framework import ops
 
 DEFAULT_BN_LAG = .0
@@ -113,7 +113,7 @@ def conv_layer(input_,
             if input_.get_shape().as_list()[1] < filter_size[0]:
                 res = tf.slice(res, [
                     0, filter_size[0] - input_.get_shape().as_list()[1],
-                    filter_size[1] - input_.get_shape().as_list()[2], 0
+                       filter_size[1] - input_.get_shape().as_list()[2], 0
                 ], [-1, -1, -1, -1])
 
         if bias:
@@ -267,8 +267,8 @@ def batch_norm(input_,
         if bn_lag > 0.:
             used_mean -= (1. - bn_lag) * (used_mean - tf.stop_gradient(mean))
             used_var -= (1 - bn_lag) * (used_var - tf.stop_gradient(var))
-            used_mean /= (1. - bn_lag**(step + 1))
-            used_var /= (1. - bn_lag**(step + 1))
+            used_mean /= (1. - bn_lag ** (step + 1))
+            used_var /= (1. - bn_lag ** (step + 1))
     else:
         used_mean, used_var = mean, var
         cur_mean, cur_var = used_mean, used_var
@@ -331,9 +331,9 @@ def batch_norm_log_diff(input_,
             used_var = stable_var(input_=input_, mean=used_mean, axes=axes)
             cur_var = used_var
             used_mean -= (1 - bn_lag) * (used_mean - tf.stop_gradient(mean))
-            used_mean /= (1. - bn_lag**(step + 1))
+            used_mean /= (1. - bn_lag ** (step + 1))
             used_var -= (1 - bn_lag) * (used_var - tf.stop_gradient(var))
-            used_var /= (1. - bn_lag**(step + 1))
+            used_var /= (1. - bn_lag ** (step + 1))
     else:
         used_mean, used_var = mean, var
         cur_mean, cur_var = used_mean, used_var

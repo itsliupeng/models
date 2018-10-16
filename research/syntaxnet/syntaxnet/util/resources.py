@@ -29,46 +29,44 @@ import os
 # Absolute path to the root directory holding syntaxnet.  Resource paths are
 # interpreted relative to this path.
 
-_ROOT_DIR = os.path.dirname(              # .../
-    os.path.dirname(                      # .../syntaxnet/
-        os.path.dirname(                  # .../syntaxnet/util/
+_ROOT_DIR = os.path.dirname(  # .../
+    os.path.dirname(  # .../syntaxnet/
+        os.path.dirname(  # .../syntaxnet/util/
             os.path.abspath(__file__))))  # .../syntaxnet/util/resources.py
 
 
 def GetSyntaxNetResourceAsFile(path):
-  """Returns a resource as an opened read-only file.
-
-  Args:
-    path: Relative path to the resource, which must be a Bazel data dependency.
-
-  Returns:
-    Opened read-only file pointing to resource data.
-
-  Raises:
-    IOError: If the resource cannot be loaded.
-  """
-  path = os.path.join(_ROOT_DIR, path)
-  if os.path.isdir(path):
-    raise IOError('Resource "{}" is not a file'.format(path))
-  if not os.path.isfile(path):
-    raise IOError(
-        'Resource "{}" not found; is it a data dependency?'.format(path))
-  return open(path, 'rb')
+    """Returns a resource as an opened read-only file.
+  
+    Args:
+      path: Relative path to the resource, which must be a Bazel data dependency.
+  
+    Returns:
+      Opened read-only file pointing to resource data.
+  
+    Raises:
+      IOError: If the resource cannot be loaded.
+    """
+    path = os.path.join(_ROOT_DIR, path)
+    if os.path.isdir(path):
+        raise IOError('Resource "{}" is not a file'.format(path))
+    if not os.path.isfile(path):
+        raise IOError(
+            'Resource "{}" not found; is it a data dependency?'.format(path))
+    return open(path, 'rb')
 
 
 def GetSyntaxNetResource(path):
-  """Returns the content of a resource.
-
-  Args:
-    path: Relative path to the resource, which must be a Bazel data dependency.
-
-  Returns:
-    Raw content of the resource.
-
-  Raises:
-    IOError: If the resource cannot be loaded.
-  """
-  with GetSyntaxNetResourceAsFile(path) as resource_file:
-    return resource_file.read()
-
-
+    """Returns the content of a resource.
+  
+    Args:
+      path: Relative path to the resource, which must be a Bazel data dependency.
+  
+    Returns:
+      Raw content of the resource.
+  
+    Raises:
+      IOError: If the resource cannot be loaded.
+    """
+    with GetSyntaxNetResourceAsFile(path) as resource_file:
+        return resource_file.read()

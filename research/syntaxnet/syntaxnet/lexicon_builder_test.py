@@ -16,19 +16,15 @@
 
 """Tests for lexicon_builder."""
 
-
 # disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member
 import os.path
+
 import tensorflow as tf
-
-import syntaxnet.load_parser_ops
-
-from tensorflow.python.platform import tf_logging as logging
-
 from syntaxnet import sentence_pb2
 from syntaxnet import task_spec_pb2
 from syntaxnet import test_flags
 from syntaxnet.ops import gen_parser_ops
+from tensorflow.python.platform import tf_logging as logging
 
 CONLL_DOC1 = u'''1 बात _ n NN _ _ _ _ _
 2 गलत _ adj JJ _ _ _ _ _
@@ -67,168 +63,169 @@ TOKENIZED_DOCS = u'''बात गलत हो तो गुस्सा से
 
 CHARS = u'''अ इ आ क ग ज ट त द न प भ ब य म र ल व ह स ि ा ु ी े ै ो ् ड़ । ं'''.split(' ')
 
-CHAR_NGRAMS = u'''^ अ  ^ अभ  ^ आ  ^ आन  ^ इ  ^ इस $  ^ क  ^ कद  ^ के $  ^ को $  ^ ग  ^ गय  ^ गल  ^ गु  ^ त  ^ तो $  ^ प  ^ पड़ $  ^ ब  ^ बा  ^ भ  ^ भं  ^ भी $  ^ म  ^ मे  ^ र  ^ रं  ^ ल  ^ ला  ^ ले  ^ व  ^ वह  ^ स  ^ से  ^ से $  ^ ह  ^ है $  ^ हो $  ^ । $  ं  ं $  ंग $  क  कि  ग $  ज  ज $  जम  ट  टि  त  त $  त्  द  दम $  न  न $  ना $  ने  ब  ब्  भ  भि  म  म $  मी $  य  या $  र  रि  री $  ल  ल  लत $  ले  स  स $  सा $  स्  ह  हा  ा  ा $  ां $  ाज  ात $  ि  िज $  िट  िन  िन $  ी $  ु  ुस  े  े $  ें $  ेक  ेत  ेब  ै $  ो $  ्  ्र  ्स  ड़ $'''.split('  ')
+CHAR_NGRAMS = u'''^ अ  ^ अभ  ^ आ  ^ आन  ^ इ  ^ इस $  ^ क  ^ कद  ^ के $  ^ को $  ^ ग  ^ गय  ^ गल  ^ गु  ^ त  ^ तो $  ^ प  ^ पड़ $  ^ ब  ^ बा  ^ भ  ^ भं  ^ भी $  ^ म  ^ मे  ^ र  ^ रं  ^ ल  ^ ला  ^ ले  ^ व  ^ वह  ^ स  ^ से  ^ से $  ^ ह  ^ है $  ^ हो $  ^ । $  ं  ं $  ंग $  क  कि  ग $  ज  ज $  जम  ट  टि  त  त $  त्  द  दम $  न  न $  ना $  ने  ब  ब्  भ  भि  म  म $  मी $  य  या $  र  रि  री $  ल  ल  लत $  ले  स  स $  सा $  स्  ह  हा  ा  ा $  ां $  ाज  ात $  ि  िज $  िट  िन  िन $  ी $  ु  ुस  े  े $  ें $  ेक  ेत  ेब  ै $  ो $  ्  ्र  ्स  ड़ $'''.split(
+    '  ')
 
 COMMENTS = u'# Line with fake comments.'
 
 
 class LexiconBuilderTest(tf.test.TestCase):
 
-  def setUp(self):
-    self.corpus_file = os.path.join(test_flags.temp_dir(), 'documents.conll')
-    self.context_file = os.path.join(test_flags.temp_dir(), 'context.pbtxt')
+    def setUp(self):
+        self.corpus_file = os.path.join(test_flags.temp_dir(), 'documents.conll')
+        self.context_file = os.path.join(test_flags.temp_dir(), 'context.pbtxt')
 
-  def AddInput(self, name, file_pattern, record_format, context):
-    inp = context.input.add()
-    inp.name = name
-    inp.record_format.append(record_format)
-    inp.part.add().file_pattern = file_pattern
+    def AddInput(self, name, file_pattern, record_format, context):
+        inp = context.input.add()
+        inp.name = name
+        inp.record_format.append(record_format)
+        inp.part.add().file_pattern = file_pattern
 
-  def AddParameter(self, name, value, context):
-    param = context.parameter.add()
-    param.name = name
-    param.value = value
+    def AddParameter(self, name, value, context):
+        param = context.parameter.add()
+        param.name = name
+        param.value = value
 
-  def WriteContext(self, corpus_format):
-    context = task_spec_pb2.TaskSpec()
-    self.AddParameter('brain_parser_embedding_names', 'words;tags', context)
-    self.AddParameter('brain_parser_features', 'input.token.word;input.tag',
-                      context)
-    self.AddInput('documents', self.corpus_file, corpus_format, context)
-    for name in ('word-map', 'lcword-map', 'tag-map',
-                 'category-map', 'label-map', 'prefix-table',
-                 'suffix-table', 'tag-to-category', 'char-map',
-                 'char-ngram-map'):
-      self.AddInput(name, os.path.join(test_flags.temp_dir(), name), '',
-                    context)
-    logging.info('Writing context to: %s', self.context_file)
-    with open(self.context_file, 'w') as f:
-      f.write(str(context))
+    def WriteContext(self, corpus_format):
+        context = task_spec_pb2.TaskSpec()
+        self.AddParameter('brain_parser_embedding_names', 'words;tags', context)
+        self.AddParameter('brain_parser_features', 'input.token.word;input.tag',
+                          context)
+        self.AddInput('documents', self.corpus_file, corpus_format, context)
+        for name in ('word-map', 'lcword-map', 'tag-map',
+                     'category-map', 'label-map', 'prefix-table',
+                     'suffix-table', 'tag-to-category', 'char-map',
+                     'char-ngram-map'):
+            self.AddInput(name, os.path.join(test_flags.temp_dir(), name), '',
+                          context)
+        logging.info('Writing context to: %s', self.context_file)
+        with open(self.context_file, 'w') as f:
+            f.write(str(context))
 
-  def ReadNextDocument(self, sess, doc_source):
-    doc_str, last = sess.run(doc_source)
-    if doc_str:
-      doc = sentence_pb2.Sentence()
-      doc.ParseFromString(doc_str[0])
-    else:
-      doc = None
-    return doc, last
+    def ReadNextDocument(self, sess, doc_source):
+        doc_str, last = sess.run(doc_source)
+        if doc_str:
+            doc = sentence_pb2.Sentence()
+            doc.ParseFromString(doc_str[0])
+        else:
+            doc = None
+        return doc, last
 
-  def ValidateDocuments(self):
-    doc_source = gen_parser_ops.document_source(
-        task_context=self.context_file, batch_size=1)
-    with self.test_session() as sess:
-      logging.info('Reading document1')
-      doc, last = self.ReadNextDocument(sess, doc_source)
-      self.assertEqual(len(doc.token), 12)
-      self.assertEqual(u'लाजमी', doc.token[9].word)
-      self.assertFalse(last)
-      logging.info('Reading document2')
-      doc, last = self.ReadNextDocument(sess, doc_source)
-      self.assertEqual(len(doc.token), 13)
-      self.assertEqual(u'भंग', doc.token[9].word)
-      self.assertFalse(last)
-      logging.info('Hitting end of the dataset')
-      doc, last = self.ReadNextDocument(sess, doc_source)
-      self.assertTrue(doc is None)
-      self.assertTrue(last)
+    def ValidateDocuments(self):
+        doc_source = gen_parser_ops.document_source(
+            task_context=self.context_file, batch_size=1)
+        with self.test_session() as sess:
+            logging.info('Reading document1')
+            doc, last = self.ReadNextDocument(sess, doc_source)
+            self.assertEqual(len(doc.token), 12)
+            self.assertEqual(u'लाजमी', doc.token[9].word)
+            self.assertFalse(last)
+            logging.info('Reading document2')
+            doc, last = self.ReadNextDocument(sess, doc_source)
+            self.assertEqual(len(doc.token), 13)
+            self.assertEqual(u'भंग', doc.token[9].word)
+            self.assertFalse(last)
+            logging.info('Hitting end of the dataset')
+            doc, last = self.ReadNextDocument(sess, doc_source)
+            self.assertTrue(doc is None)
+            self.assertTrue(last)
 
-  def ValidateTagToCategoryMap(self):
-    with open(os.path.join(test_flags.temp_dir(), 'tag-to-category'), 'r') as f:
-      entries = [line.strip().split('\t') for line in f.readlines()]
-    for tag, category in entries:
-      self.assertIn(tag, TAGS)
-      self.assertIn(category, CATEGORIES)
+    def ValidateTagToCategoryMap(self):
+        with open(os.path.join(test_flags.temp_dir(), 'tag-to-category'), 'r') as f:
+            entries = [line.strip().split('\t') for line in f.readlines()]
+        for tag, category in entries:
+            self.assertIn(tag, TAGS)
+            self.assertIn(category, CATEGORIES)
 
-  def LoadMap(self, map_name):
-    loaded_map = {}
-    with open(os.path.join(test_flags.temp_dir(), map_name), 'r') as f:
-      for line in f:
-        entries = line.strip().split(' ')
-        if len(entries) >= 2:
-          loaded_map[' '.join(entries[:-1])] = entries[-1]
-    return loaded_map
+    def LoadMap(self, map_name):
+        loaded_map = {}
+        with open(os.path.join(test_flags.temp_dir(), map_name), 'r') as f:
+            for line in f:
+                entries = line.strip().split(' ')
+                if len(entries) >= 2:
+                    loaded_map[' '.join(entries[:-1])] = entries[-1]
+        return loaded_map
 
-  def ValidateCharMap(self):
-    char_map = self.LoadMap('char-map')
-    self.assertEqual(len(char_map), len(CHARS))
-    for char in CHARS:
-      self.assertIn(char.encode('utf-8'), char_map)
+    def ValidateCharMap(self):
+        char_map = self.LoadMap('char-map')
+        self.assertEqual(len(char_map), len(CHARS))
+        for char in CHARS:
+            self.assertIn(char.encode('utf-8'), char_map)
 
-  def ValidateCharNgramMap(self):
-    char_ngram_map = self.LoadMap('char-ngram-map')
-    self.assertEqual(len(char_ngram_map), len(CHAR_NGRAMS))
-    for char_ngram in CHAR_NGRAMS:
-      self.assertIn(char_ngram.encode('utf-8'), char_ngram_map)
+    def ValidateCharNgramMap(self):
+        char_ngram_map = self.LoadMap('char-ngram-map')
+        self.assertEqual(len(char_ngram_map), len(CHAR_NGRAMS))
+        for char_ngram in CHAR_NGRAMS:
+            self.assertIn(char_ngram.encode('utf-8'), char_ngram_map)
 
-  def ValidateWordMap(self):
-    word_map = self.LoadMap('word-map')
-    for word in filter(None, TOKENIZED_DOCS.replace('\n', ' ').split(' ')):
-      self.assertIn(word.encode('utf-8'), word_map)
+    def ValidateWordMap(self):
+        word_map = self.LoadMap('word-map')
+        for word in filter(None, TOKENIZED_DOCS.replace('\n', ' ').split(' ')):
+            self.assertIn(word.encode('utf-8'), word_map)
 
-  def BuildLexicon(self):
-    with self.test_session():
-      gen_parser_ops.lexicon_builder(
-          task_context=self.context_file,
-          lexicon_max_char_ngram_length=2,
-          lexicon_char_ngram_mark_boundaries=True).run()
+    def BuildLexicon(self):
+        with self.test_session():
+            gen_parser_ops.lexicon_builder(
+                task_context=self.context_file,
+                lexicon_max_char_ngram_length=2,
+                lexicon_char_ngram_mark_boundaries=True).run()
 
-  def testCoNLLFormat(self):
-    self.WriteContext('conll-sentence')
-    logging.info('Writing conll file to: %s', self.corpus_file)
-    with open(self.corpus_file, 'w') as f:
-      f.write((CONLL_DOC1 + u'\n\n' + CONLL_DOC2 + u'\n')
-              .replace(' ', '\t').encode('utf-8'))
-    self.ValidateDocuments()
-    self.BuildLexicon()
-    self.ValidateTagToCategoryMap()
-    self.ValidateCharMap()
-    self.ValidateCharNgramMap()
-    self.ValidateWordMap()
+    def testCoNLLFormat(self):
+        self.WriteContext('conll-sentence')
+        logging.info('Writing conll file to: %s', self.corpus_file)
+        with open(self.corpus_file, 'w') as f:
+            f.write((CONLL_DOC1 + u'\n\n' + CONLL_DOC2 + u'\n')
+                    .replace(' ', '\t').encode('utf-8'))
+        self.ValidateDocuments()
+        self.BuildLexicon()
+        self.ValidateTagToCategoryMap()
+        self.ValidateCharMap()
+        self.ValidateCharNgramMap()
+        self.ValidateWordMap()
 
-  def testCoNLLFormatExtraNewlinesAndComments(self):
-    self.WriteContext('conll-sentence')
-    with open(self.corpus_file, 'w') as f:
-      f.write((u'\n\n\n' + CONLL_DOC1 + u'\n\n\n' + COMMENTS +
-               u'\n\n' + CONLL_DOC2).replace(' ', '\t').encode('utf-8'))
-    self.ValidateDocuments()
-    self.BuildLexicon()
-    self.ValidateTagToCategoryMap()
+    def testCoNLLFormatExtraNewlinesAndComments(self):
+        self.WriteContext('conll-sentence')
+        with open(self.corpus_file, 'w') as f:
+            f.write((u'\n\n\n' + CONLL_DOC1 + u'\n\n\n' + COMMENTS +
+                     u'\n\n' + CONLL_DOC2).replace(' ', '\t').encode('utf-8'))
+        self.ValidateDocuments()
+        self.BuildLexicon()
+        self.ValidateTagToCategoryMap()
 
-  def testTokenizedTextFormat(self):
-    self.WriteContext('tokenized-text')
-    with open(self.corpus_file, 'w') as f:
-      f.write(TOKENIZED_DOCS.encode('utf-8'))
-    self.ValidateDocuments()
-    self.BuildLexicon()
+    def testTokenizedTextFormat(self):
+        self.WriteContext('tokenized-text')
+        with open(self.corpus_file, 'w') as f:
+            f.write(TOKENIZED_DOCS.encode('utf-8'))
+        self.ValidateDocuments()
+        self.BuildLexicon()
 
-  def testTokenizedTextFormatExtraNewlines(self):
-    self.WriteContext('tokenized-text')
-    with open(self.corpus_file, 'w') as f:
-      f.write((u'\n\n\n' + TOKENIZED_DOCS + u'\n\n\n').encode('utf-8'))
-    self.ValidateDocuments()
-    self.BuildLexicon()
+    def testTokenizedTextFormatExtraNewlines(self):
+        self.WriteContext('tokenized-text')
+        with open(self.corpus_file, 'w') as f:
+            f.write((u'\n\n\n' + TOKENIZED_DOCS + u'\n\n\n').encode('utf-8'))
+        self.ValidateDocuments()
+        self.BuildLexicon()
 
-  def testFeatureVocab(self):
-    words_vocab_op = gen_parser_ops.feature_vocab(
-        task_context=self.context_file)
-    foo_vocab_op = gen_parser_ops.feature_vocab(
-        task_context=self.context_file, embedding_name='foo')
+    def testFeatureVocab(self):
+        words_vocab_op = gen_parser_ops.feature_vocab(
+            task_context=self.context_file)
+        foo_vocab_op = gen_parser_ops.feature_vocab(
+            task_context=self.context_file, embedding_name='foo')
 
-    with self.test_session() as sess:
-      words_vocab, foo_vocab = sess.run([words_vocab_op, foo_vocab_op])
+        with self.test_session() as sess:
+            words_vocab, foo_vocab = sess.run([words_vocab_op, foo_vocab_op])
 
-    self.assertEqual(0, len(foo_vocab))
+        self.assertEqual(0, len(foo_vocab))
 
-    # Explicitly generate the expected vocabulary from the test documents.
-    expected_vocab = set(['<UNKNOWN>', '<OUTSIDE>'])
-    for doc in [CONLL_DOC1, CONLL_DOC2]:
-      for line in doc.split('\n'):
-        expected_vocab.add(line.split(' ')[1])
+        # Explicitly generate the expected vocabulary from the test documents.
+        expected_vocab = set(['<UNKNOWN>', '<OUTSIDE>'])
+        for doc in [CONLL_DOC1, CONLL_DOC2]:
+            for line in doc.split('\n'):
+                expected_vocab.add(line.split(' ')[1])
 
-    actual_vocab = set(s.decode('utf-8') for s in words_vocab)
-    self.assertEqual(expected_vocab, actual_vocab)
+        actual_vocab = set(s.decode('utf-8') for s in words_vocab)
+        self.assertEqual(expected_vocab, actual_vocab)
 
 
 if __name__ == '__main__':
-  tf.test.main()
+    tf.test.main()

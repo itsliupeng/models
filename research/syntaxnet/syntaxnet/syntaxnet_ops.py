@@ -15,7 +15,5 @@
 
 """Imports the SyntaxNet ops and their C++ implementations."""
 
-
 from syntaxnet.ops.gen_parser_ops import *
 
-import syntaxnet.load_parser_ops

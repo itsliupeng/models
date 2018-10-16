@@ -24,32 +24,32 @@ import numpy as np
 
 
 def trajectory_to_deltas(trajectory, state):
-  """Computes a sequence of deltas of a state to traverse a trajectory in 2D.
+    """Computes a sequence of deltas of a state to traverse a trajectory in 2D.
+  
+    The initial state of the agent contains its pose -- location in 2D and
+    orientation. When the computed deltas are incrementally added to it, it
+    traverses the specified trajectory while keeping its orientation parallel to
+    the trajectory.
+  
+    Args:
+      trajectory: a np.array of floats of shape n x 2. The n-th row contains the
+        n-th point.
+      state: a 3 element np.array of floats containing agent's location and
+        orientation in radians.
+  
+    Returns:
+      A np.array of floats of size n x 3.
+    """
+    state = np.reshape(state, [-1])
+    init_xy = state[0:2]
+    init_theta = state[2]
 
-  The initial state of the agent contains its pose -- location in 2D and
-  orientation. When the computed deltas are incrementally added to it, it
-  traverses the specified trajectory while keeping its orientation parallel to
-  the trajectory.
+    delta_xy = trajectory - np.concatenate(
+        [np.reshape(init_xy, [1, 2]), trajectory[:-1, :]], axis=0)
 
-  Args:
-    trajectory: a np.array of floats of shape n x 2. The n-th row contains the
-      n-th point.
-    state: a 3 element np.array of floats containing agent's location and
-      orientation in radians.
+    thetas = np.reshape(np.arctan2(delta_xy[:, 1], delta_xy[:, 0]), [-1, 1])
+    thetas = np.concatenate([np.reshape(init_theta, [1, 1]), thetas], axis=0)
+    delta_thetas = thetas[1:] - thetas[:-1]
 
-  Returns:
-    A np.array of floats of size n x 3.
-  """
-  state = np.reshape(state, [-1])
-  init_xy = state[0:2]
-  init_theta = state[2]
-
-  delta_xy = trajectory - np.concatenate(
-      [np.reshape(init_xy, [1, 2]), trajectory[:-1, :]], axis=0)
-
-  thetas = np.reshape(np.arctan2(delta_xy[:, 1], delta_xy[:, 0]), [-1, 1])
-  thetas = np.concatenate([np.reshape(init_theta, [1, 1]), thetas], axis=0)
-  delta_thetas = thetas[1:] - thetas[:-1]
-
-  deltas = np.concatenate([delta_xy, delta_thetas], axis=1)
-  return deltas
+    deltas = np.concatenate([delta_xy, delta_thetas], axis=1)
+    return deltas

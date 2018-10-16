@@ -18,17 +18,12 @@ import os
 import os.path
 
 import tensorflow as tf
-
-from google.protobuf import text_format
-
 from dragnn.python import lexicon
-
-# Imported for FLAGS.tf_master, which is used in the lexicon module.
-
-from syntaxnet import parser_trainer
+from google.protobuf import text_format
 from syntaxnet import task_spec_pb2
 from syntaxnet import test_flags
 
+# Imported for FLAGS.tf_master, which is used in the lexicon module.
 
 _EXPECTED_CONTEXT = r"""
 input { name: "word-map" Part { file_pattern: "/tmp/word-map" } }
@@ -47,27 +42,27 @@ input { name: "known-word-map" Part { file_pattern: "/tmp/known-word-map" } }
 
 class LexiconTest(tf.test.TestCase):
 
-  def testCreateLexiconContext(self):
-    expected_context = task_spec_pb2.TaskSpec()
-    text_format.Parse(_EXPECTED_CONTEXT, expected_context)
-    self.assertProtoEquals(
-        lexicon.create_lexicon_context('/tmp'), expected_context)
+    def testCreateLexiconContext(self):
+        expected_context = task_spec_pb2.TaskSpec()
+        text_format.Parse(_EXPECTED_CONTEXT, expected_context)
+        self.assertProtoEquals(
+            lexicon.create_lexicon_context('/tmp'), expected_context)
 
-  def testBuildLexicon(self):
-    empty_input_path = os.path.join(test_flags.temp_dir(), 'empty-input')
-    lexicon_output_path = os.path.join(test_flags.temp_dir(), 'lexicon-output')
+    def testBuildLexicon(self):
+        empty_input_path = os.path.join(test_flags.temp_dir(), 'empty-input')
+        lexicon_output_path = os.path.join(test_flags.temp_dir(), 'lexicon-output')
 
-    with open(empty_input_path, 'w'):
-      pass
+        with open(empty_input_path, 'w'):
+            pass
 
-    # The directory may already exist when running locally multiple times.
-    if not os.path.exists(lexicon_output_path):
-      os.mkdir(lexicon_output_path)
+        # The directory may already exist when running locally multiple times.
+        if not os.path.exists(lexicon_output_path):
+            os.mkdir(lexicon_output_path)
 
-    # Just make sure this doesn't crash; the lexicon builder op is already
-    # exercised in its own unit test.
-    lexicon.build_lexicon(lexicon_output_path, empty_input_path)
+        # Just make sure this doesn't crash; the lexicon builder op is already
+        # exercised in its own unit test.
+        lexicon.build_lexicon(lexicon_output_path, empty_input_path)
 
 
 if __name__ == '__main__':
-  tf.test.main()
+    tf.test.main()

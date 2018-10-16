@@ -17,6 +17,7 @@
 """Simple tool for inspecting nearest neighbors and analogies."""
 
 from __future__ import print_function
+
 import re
 import sys
 from getopt import GetoptError, getopt
@@ -24,53 +25,53 @@ from getopt import GetoptError, getopt
 from vecs import Vecs
 
 try:
-  opts, args = getopt(sys.argv[1:], 'v:e:', ['vocab=', 'embeddings='])
+    opts, args = getopt(sys.argv[1:], 'v:e:', ['vocab=', 'embeddings='])
 except GetoptError as e:
-  print(e, file=sys.stderr)
-  sys.exit(2)
+    print(e, file=sys.stderr)
+    sys.exit(2)
 
 opt_vocab = 'vocab.txt'
 opt_embeddings = None
 
 for o, a in opts:
-  if o in ('-v', '--vocab'):
-    opt_vocab = a
-  if o in ('-e', '--embeddings'):
-    opt_embeddings = a
+    if o in ('-v', '--vocab'):
+        opt_vocab = a
+    if o in ('-e', '--embeddings'):
+        opt_embeddings = a
 
 vecs = Vecs(opt_vocab, opt_embeddings)
 
 while True:
-  sys.stdout.write('query> ')
-  sys.stdout.flush()
+    sys.stdout.write('query> ')
+    sys.stdout.flush()
 
-  query = sys.stdin.readline().strip()
-  if not query:
-    break
+    query = sys.stdin.readline().strip()
+    if not query:
+        break
 
-  parts = re.split(r'\s+', query)
+    parts = re.split(r'\s+', query)
 
-  if len(parts) == 1:
-    res = vecs.neighbors(parts[0])
+    if len(parts) == 1:
+        res = vecs.neighbors(parts[0])
 
-  elif len(parts) == 3:
-    vs = [vecs.lookup(w) for w in parts]
-    if any(v is None for v in vs):
-      print('not in vocabulary: %s' % (
-            ', '.join(tok for tok, v in zip(parts, vs) if v is None)))
+    elif len(parts) == 3:
+        vs = [vecs.lookup(w) for w in parts]
+        if any(v is None for v in vs):
+            print('not in vocabulary: %s' % (
+                ', '.join(tok for tok, v in zip(parts, vs) if v is None)))
 
-      continue
+            continue
 
-    res = vecs.neighbors(vs[2] - vs[0] + vs[1])
+        res = vecs.neighbors(vs[2] - vs[0] + vs[1])
 
-  else:
-    print('use a single word to query neighbors, or three words for analogy')
-    continue
+    else:
+        print('use a single word to query neighbors, or three words for analogy')
+        continue
 
-  if not res:
-    continue
+    if not res:
+        continue
 
-  for word, sim in res[:20]:
-    print('%0.4f: %s' % (sim, word))
+    for word, sim in res[:20]:
+        print('%0.4f: %s' % (sim, word))
 
-  print()
+    print()
