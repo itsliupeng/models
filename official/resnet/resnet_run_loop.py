@@ -263,15 +263,16 @@ def resnet_model_fn(features, labels, mode, model_class,
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
-                        dtype=dtype)
+    # model = model_class(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
 
-    logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
+    from official.resnet.slim import inception_model
+    from official.resnet.slim import losses as inception_losses
+    num_classes = 1000
+    with tf.variable_scope(tf.get_variable_scope()):
+        logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
 
-    # This acts as a no-op if the logits are already in fp32 (provided logits are
-    # not a SparseTensor). If dtype is is low precision, logits must be cast to
-    # fp32 for numerical stability.
-    logits = tf.cast(logits, tf.float32)
+
+    ###################################################################################################################
 
     predictions = {
         'classes': tf.argmax(logits, axis=1),
@@ -295,20 +296,19 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
 
-    # If no loss_filter_fn is passed, assume we want the default behavior,
-    # which is that batch_normalization variables are excluded from loss.
-    def exclude_batch_norm(name):
-        return 'batch_normalization' not in name
+    inception_model.loss([logits, aux_logits], labels)
+    losses = tf.get_collection(inception_losses.LOSSES_COLLECTION)
 
-    loss_filter_fn = loss_filter_fn or exclude_batch_norm
+    regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
 
-    # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n(
-        # loss is computed using fp32 for numerical stability.
-        [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
-         if loss_filter_fn(v.name)])
-    tf.summary.scalar('l2_loss', l2_loss)
-    loss = cross_entropy + l2_loss
+    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+    loss_averages_op = loss_averages.apply(losses + [total_loss])
+
+    with tf.control_dependencies([loss_averages_op]):
+        total_loss = tf.identity(total_loss)
+
+    tf.summary.scalar('l2_loss', total_loss)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
@@ -340,7 +340,7 @@ def resnet_model_fn(features, labels, mode, model_class,
             # When computing fp16 gradients, often intermediate tensor values are
             # so small, they underflow to 0. To avoid this, we multiply the loss by
             # loss_scale to make these tensor values loss_scale times bigger.
-            scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
+            scaled_grad_vars = optimizer.compute_gradients(total_loss * loss_scale)
 
             if fine_tune:
                 scaled_grad_vars = _dense_grad_filter(scaled_grad_vars)
@@ -351,7 +351,7 @@ def resnet_model_fn(features, labels, mode, model_class,
                                   for grad, var in scaled_grad_vars]
             minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
         else:
-            grad_vars = optimizer.compute_gradients(loss)
+            grad_vars = optimizer.compute_gradients(total_loss)
             if fine_tune:
                 grad_vars = _dense_grad_filter(grad_vars)
             minimize_op = optimizer.apply_gradients(grad_vars, global_step)
@@ -378,7 +378,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     return tf.estimator.EstimatorSpec(
         mode=mode,
         predictions=predictions,
-        loss=loss,
+        loss=total_loss,
         train_op=train_op,
         eval_metric_ops=metrics)
 
