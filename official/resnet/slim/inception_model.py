@@ -454,7 +454,7 @@ def loss(logits, labels):
       labels: Labels from distorted_inputs or inputs(). 1-D tensor
               of shape [batch_size]
     """
-    batch_size = logits.shape[0]
+    batch_size = logits[0].shape[0]
 
     # Reshape the labels into a dense Tensor of
     # shape [FLAGS.batch_size, num_classes].

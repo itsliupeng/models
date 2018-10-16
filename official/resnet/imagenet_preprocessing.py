@@ -45,7 +45,7 @@ _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 # The lower bound for the smallest side of the image for aspect-preserving
 # resizing. For example, if an image is 500 x 1000, it will be resized to
 # _RESIZE_MIN x (_RESIZE_MIN * 2).
-_RESIZE_MIN = 256
+_RESIZE_MIN = 299
 
 
 def _decode_crop_and_flip(image_buffer, bbox, num_channels):

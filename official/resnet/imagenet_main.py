@@ -30,7 +30,7 @@ from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
-_DEFAULT_IMAGE_SIZE = 224
+_DEFAULT_IMAGE_SIZE = 299
 _NUM_CHANNELS = 3
 _NUM_CLASSES = 1001
 
