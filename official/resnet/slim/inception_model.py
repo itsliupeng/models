@@ -456,9 +456,8 @@ def loss(logits, labels, batch_size=None):
               of shape [batch_size]
     """
 
-    tf.Print("###################### liupeng debug ######################")
-    tf.Print(logits.shape)
-    tf.Print(labels.shape)
+    print('"###################### liupeng debug ######################"')
+    print(logits[0].shape, logits[1].shape, labels.shape)
 
     if not batch_size:
         batch_size = FLAGS.batch_size
