@@ -309,7 +309,7 @@ def resnet_model_fn(features, labels, mode, model_class,
                 resnet_size, choices.keys()))
             raise ValueError(err)
 
-    model = resnet_model.Model(esnet_size=resnet_size,
+    model = resnet_model.Model(resnet_size=resnet_size,
             bottleneck=True,
             num_classes=num_classes,
             num_filters=64,
