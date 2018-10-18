@@ -270,9 +270,14 @@ def resnet_model_fn(features, labels, mode, model_class,
     # with tf.variable_scope(tf.get_variable_scope()):
     #     logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
 
-    from official.resnet.slim import vgg
+    # from official.resnet.slim import vgg
+    #
+    # logits, endpoints = vgg.vgg_16(features, num_classes=num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
 
-    logits, endpoints = vgg.vgg_16(features, num_classes=num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    from official.resnet import resnet_model
+
+    model = resnet_model.Model(50, data_format='channels_last', resnet_version=1, dtype=tf.float32)
+    logits = model(features, mode=tf.estimator.ModeKeys.TRAIN)
 
 
     ###################################################################################################################
