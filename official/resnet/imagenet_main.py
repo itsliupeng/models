@@ -338,7 +338,7 @@ def imagenet_model_fn(features, labels, mode, params):
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+    model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
 
     logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
@@ -398,7 +398,6 @@ def imagenet_model_fn(features, labels, mode, params):
             learning_rate=learning_rate,
             momentum=momentum
         )
-
 
         grad_vars = optimizer.compute_gradients(loss)
         minimize_op = optimizer.apply_gradients(grad_vars, global_step)
