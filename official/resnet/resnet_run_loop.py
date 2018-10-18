@@ -265,10 +265,14 @@ def resnet_model_fn(features, labels, mode, model_class,
 
     # model = model_class(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
 
-    from official.resnet.slim import inception_model
+    # from official.resnet.slim import inception_model
     num_classes = 1000
-    with tf.variable_scope(tf.get_variable_scope()):
-        logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
+    # with tf.variable_scope(tf.get_variable_scope()):
+    #     logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
+
+    from official.resnet.slim import vgg
+
+    logits, endpoints = vgg.vgg_16(features, num_classes=num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
 
 
     ###################################################################################################################
@@ -296,7 +300,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.summary.scalar('cross_entropy', cross_entropy)
 
     tf.losses.sparse_softmax_cross_entropy(labels, logits, weights=1.0)
-    tf.losses.sparse_softmax_cross_entropy(labels, aux_logits, weights=0.4)
+    # tf.losses.sparse_softmax_cross_entropy(labels, aux_logits, weights=0.4)
 
     losses = tf.get_collection(tf.GraphKeys.LOSSES)
     regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
