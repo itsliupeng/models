@@ -304,22 +304,131 @@ def imagenet_model_fn(features, labels, mode, params):
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
 
-    return resnet_run_loop.resnet_model_fn(
-        features=features,
-        labels=labels,
+
+    # return resnet_run_loop.resnet_model_fn(
+    #     features=features,
+    #     labels=labels,
+    #     mode=mode,
+    #     model_class=ImagenetModel,
+    #     resnet_size=params['resnet_size'],
+    #     weight_decay=1e-4,
+    #     learning_rate_fn=learning_rate_fn,
+    #     momentum=0.9,
+    #     data_format=params['data_format'],
+    #     resnet_version=params['resnet_version'],
+    #     loss_scale=params['loss_scale'],
+    #     loss_filter_fn=None,
+    #     dtype=params['dtype'],
+    #     fine_tune=params['fine_tune']
+    # )
+
+    resnet_size = params['resnet_size'],
+    weight_decay = 1e-4,
+    learning_rate_fn = learning_rate_fn,
+    momentum = 0.9,
+    data_format = params['data_format'],
+    resnet_version = params['resnet_version'],
+    loss_scale = params['loss_scale'],
+    loss_filter_fn = None,
+    dtype = params['dtype'],
+    fine_tune = params['fine_tune']
+
+    # Generate a summary node for the images
+    tf.summary.image('images', features, max_outputs=6)
+    # Checks that features/images have same data type being used for calculations.
+    assert features.dtype == dtype
+
+    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                        dtype=dtype)
+
+    logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
+
+    # This acts as a no-op if the logits are already in fp32 (provided logits are
+    # not a SparseTensor). If dtype is is low precision, logits must be cast to
+    # fp32 for numerical stability.
+    logits = tf.cast(logits, tf.float32)
+
+    predictions = {
+        'classes': tf.argmax(logits, axis=1),
+        'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
+    }
+
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        # Return the predictions and the specification for serving a SavedModel
+        return tf.estimator.EstimatorSpec(
+            mode=mode,
+            predictions=predictions,
+            export_outputs={
+                'predict': tf.estimator.export.PredictOutput(predictions)
+            })
+
+    # Calculate loss, which includes softmax cross entropy and L2 regularization.
+    cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+        logits=logits, labels=labels)
+
+    # Create a tensor named cross_entropy for logging purposes.
+    tf.identity(cross_entropy, name='cross_entropy')
+    tf.summary.scalar('cross_entropy', cross_entropy)
+
+    # If no loss_filter_fn is passed, assume we want the default behavior,
+    # which is that batch_normalization variables are excluded from loss.
+    def exclude_batch_norm(name):
+        return 'batch_normalization' not in name
+
+    loss_filter_fn = loss_filter_fn or exclude_batch_norm
+
+    # Add weight decay to the loss.
+    l2_loss = weight_decay * tf.add_n(
+        # loss is computed using fp32 for numerical stability.
+        [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
+         if loss_filter_fn(v.name)])
+    tf.summary.scalar('l2_loss', l2_loss)
+    loss = cross_entropy + l2_loss
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        global_step = tf.train.get_or_create_global_step()
+
+        learning_rate = learning_rate_fn(global_step)
+
+        # Create a tensor named learning_rate for logging purposes
+        tf.identity(learning_rate, name='learning_rate')
+        tf.summary.scalar('learning_rate', learning_rate)
+
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate=learning_rate,
+            momentum=momentum
+        )
+
+
+        grad_vars = optimizer.compute_gradients(loss)
+        minimize_op = optimizer.apply_gradients(grad_vars, global_step)
+
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        train_op = tf.group(minimize_op, update_ops)
+    else:
+        train_op = None
+
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+                                                    targets=labels,
+                                                    k=5,
+                                                    name='top_5_op'))
+    metrics = {'accuracy': accuracy,
+               'accuracy_top_5': accuracy_top_5}
+
+    # Create a tensor named train_accuracy for logging purposes
+    tf.identity(accuracy[1], name='train_accuracy')
+    tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+    tf.summary.scalar('train_accuracy', accuracy[1])
+    tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+
+    return tf.estimator.EstimatorSpec(
         mode=mode,
-        model_class=ImagenetModel,
-        resnet_size=params['resnet_size'],
-        weight_decay=1e-4,
-        learning_rate_fn=learning_rate_fn,
-        momentum=0.9,
-        data_format=params['data_format'],
-        resnet_version=params['resnet_version'],
-        loss_scale=params['loss_scale'],
-        loss_filter_fn=None,
-        dtype=params['dtype'],
-        fine_tune=params['fine_tune']
-    )
+        predictions=predictions,
+        loss=loss,
+        train_op=train_op,
+        eval_metric_ops=metrics)
+
 
 
 def define_imagenet_flags():
