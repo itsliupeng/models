@@ -24,6 +24,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
 
+import horovod.tensorflow as hvd
+
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
