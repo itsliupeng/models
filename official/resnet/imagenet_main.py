@@ -334,7 +334,7 @@ def imagenet_model_fn(features, labels, mode, params):
 
     from official.resnet.slim import inception_model
 
-    logits, axu_logits = inception_model.inference(features, num_classes=1001, for_training=mode == tf.estimator.ModeKeys.TRAIN, restore_logits=False)
+    logits, aux_logits = inception_model.inference(features, num_classes=1001, for_training=mode == tf.estimator.ModeKeys.TRAIN, restore_logits=False)
 
     # This acts as a no-op if the logits are already in fp32 (provided logits are
     # not a SparseTensor). If dtype is is low precision, logits must be cast to
@@ -357,8 +357,9 @@ def imagenet_model_fn(features, labels, mode, params):
 
 
     # Calculate loss, which includes softmax cross entropy and L2 regularization.
-    cross_entropy = tf.losses.sparse_softmax_cross_entropy(
-        logits=logits, labels=labels)
+    cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
+    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
+
 
     # Create a tensor named cross_entropy for logging purposes.
     tf.identity(cross_entropy, name='cross_entropy')
@@ -377,7 +378,7 @@ def imagenet_model_fn(features, labels, mode, params):
         [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
          if loss_filter_fn(v.name)])
     tf.summary.scalar('l2_loss', l2_loss)
-    loss = cross_entropy
+    loss = cross_entropy + aux_loss
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
