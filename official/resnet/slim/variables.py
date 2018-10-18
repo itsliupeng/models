@@ -280,7 +280,7 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
     if restore:
         collections.append(VARIABLES_TO_RESTORE)
     # Remove duplicates
-    collections = set(collections)
+    collections = list(set(collections))
     # Get the device for the variable.
     with tf.device(variable_device(device, name)):
         return tf.get_variable(name, shape=shape, dtype=dtype,

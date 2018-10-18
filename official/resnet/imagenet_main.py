@@ -354,7 +354,6 @@ def imagenet_model_fn(features, labels, mode, params):
                 'predict': tf.estimator.export.PredictOutput(predictions)
             })
 
-
     # Calculate loss, which includes softmax cross entropy and L2 regularization.
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
