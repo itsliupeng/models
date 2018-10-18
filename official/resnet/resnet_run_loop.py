@@ -324,7 +324,7 @@ def resnet_model_fn(features, labels, mode, model_class,
             dtype=dtype
         )
 
-    logits = model(features, mode=tf.estimator.ModeKeys.TRAIN)
+    logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
 
 
     ###################################################################################################################
