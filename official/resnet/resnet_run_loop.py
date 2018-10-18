@@ -322,40 +322,10 @@ def resnet_model_fn(features, labels, mode, model_class,
             momentum=momentum
         )
 
-        def _dense_grad_filter(gvs):
-            """Only apply gradient updates to the final layer.
-      
-            This function is used for fine tuning.
-      
-            Args:
-              gvs: list of tuples with gradients and variable info
-            Returns:
-              filtered gradients so that only the dense layer remains
-            """
-            return [(g, v) for g, v in gvs if 'dense' in v.name]
+        grad_vars = optimizer.compute_gradients(total_loss)
+        minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
-        if loss_scale != 1:
-            # When computing fp16 gradients, often intermediate tensor values are
-            # so small, they underflow to 0. To avoid this, we multiply the loss by
-            # loss_scale to make these tensor values loss_scale times bigger.
-            scaled_grad_vars = optimizer.compute_gradients(total_loss * loss_scale)
-
-            if fine_tune:
-                scaled_grad_vars = _dense_grad_filter(scaled_grad_vars)
-
-            # Once the gradient computation is complete we can scale the gradients
-            # back to the correct scale before passing them to the optimizer.
-            unscaled_grad_vars = [(grad / loss_scale, var)
-                                  for grad, var in scaled_grad_vars]
-            minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
-        else:
-            grad_vars = optimizer.compute_gradients(total_loss)
-            if fine_tune:
-                grad_vars = _dense_grad_filter(grad_vars)
-            minimize_op = optimizer.apply_gradients(grad_vars, global_step)
-
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        train_op = tf.group(minimize_op, update_ops)
+        train_op = tf.group(minimize_op, tf.get_collection(tf.GraphKeys.UPDATE_OPS))
     else:
         train_op = None
 
