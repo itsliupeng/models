@@ -304,8 +304,6 @@ def imagenet_model_fn(features, labels, mode, params):
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
 
-    print(f'liupeng_debug: base_lr {base_lr}')
-
     return resnet_run_loop.resnet_model_fn(
         features=features,
         labels=labels,

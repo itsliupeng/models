@@ -40,11 +40,6 @@ from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
-_NUM_IMAGES = {
-    'train': 1281167,
-    'validation': 50000,
-}
-
 
 # pylint: enable=g-bad-import-order
 
@@ -492,13 +487,6 @@ def resnet_model_fn(features, labels, mode, model_class,
     assert features.dtype == dtype
 
     num_classes = 1000
-    # warmup = True
-    # base_lr = .128
-    # learning_rate_fn = learning_rate_with_decay(
-    #     batch_size=flags.FLAGS['batch_size'], batch_denom=256,
-    #     num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-    #     decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=warmup, base_lr=base_lr)
-
     model = resnet_model.Model(resnet_size=resnet_size,
                                bottleneck=True,
                                num_classes=num_classes,
