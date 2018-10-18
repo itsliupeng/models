@@ -214,20 +214,209 @@ def learning_rate_with_decay(
     return learning_rate_fn
 
 
+# def resnet_model_fn(features, labels, mode, model_class,
+#                     resnet_size, weight_decay, learning_rate_fn, momentum,
+#                     data_format, resnet_version, loss_scale,
+#                     loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
+#                     fine_tune=False):
+#     """Shared functionality for different resnet model_fns.
+#
+#     Initializes the ResnetModel representing the model layers
+#     and uses that model to build the necessary EstimatorSpecs for
+#     the `mode` in question. For training, this means building losses,
+#     the optimizer, and the train op that get passed into the EstimatorSpec.
+#     For evaluation and prediction, the EstimatorSpec is returned without
+#     a train op, but with the necessary parameters for the given mode.
+#
+#     Args:
+#       features: tensor representing input images
+#       labels: tensor representing class labels for all input images
+#       mode: current estimator mode; should be one of
+#         `tf.estimator.ModeKeys.TRAIN`, `EVALUATE`, `PREDICT`
+#       model_class: a class representing a TensorFlow model that has a __call__
+#         function. We assume here that this is a subclass of ResnetModel.
+#       resnet_size: A single integer for the size of the ResNet model.
+#       weight_decay: weight decay loss rate used to regularize learned variables.
+#       learning_rate_fn: function that returns the current learning rate given
+#         the current global_step
+#       momentum: momentum term used for optimization
+#       data_format: Input format ('channels_last', 'channels_first', or None).
+#         If set to None, the format is dependent on whether a GPU is available.
+#       resnet_version: Integer representing which version of the ResNet network to
+#         use. See README for details. Valid values: [1, 2]
+#       loss_scale: The factor to scale the loss for numerical stability. A detailed
+#         summary is present in the arg parser help text.
+#       loss_filter_fn: function that takes a string variable name and returns
+#         True if the var should be included in loss calculation, and False
+#         otherwise. If None, batch_normalization variables will be excluded
+#         from the loss.
+#       dtype: the TensorFlow dtype to use for calculations.
+#       fine_tune: If True only train the dense layers(final layers).
+#
+#     Returns:
+#       EstimatorSpec parameterized according to the input params and the
+#       current mode.
+#     """
+#
+#     # Generate a summary node for the images
+#     tf.summary.image('images', features, max_outputs=6)
+#     # Checks that features/images have same data type being used for calculations.
+#     assert features.dtype == dtype
+#
+#     # model = model_class(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
+#
+#     # from official.resnet.slim import inception_model
+#     num_classes = 1000
+#     # with tf.variable_scope(tf.get_variable_scope()):
+#     #     logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
+#
+#     # from official.resnet.slim import vgg
+#     #
+#     # logits, endpoints = vgg.vgg_16(features, num_classes=num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+#
+#     from official.resnet import resnet_model
+#
+#     def _get_block_sizes(resnet_size):
+#         """Retrieve the size of each block_layer in the ResNet model.
+#
+#         The number of block layers used for the Resnet model varies according
+#         to the size of the model. This helper grabs the layer set we want, throwing
+#         an error if a non-standard size has been selected.
+#
+#         Args:
+#           resnet_size: The number of convolutional layers needed in the model.
+#
+#         Returns:
+#           A list of block sizes to use in building the model.
+#
+#         Raises:
+#           KeyError: if invalid resnet_size is received.
+#         """
+#         choices = {
+#             18: [2, 2, 2, 2],
+#             34: [3, 4, 6, 3],
+#             50: [3, 4, 6, 3],
+#             101: [3, 4, 23, 3],
+#             152: [3, 8, 36, 3],
+#             200: [3, 24, 36, 3]
+#         }
+#
+#         try:
+#             return choices[resnet_size]
+#         except KeyError:
+#             err = ('Could not find layers for selected Resnet size.\n'
+#                    'Size received: {}; sizes allowed: {}.'.format(
+#                 resnet_size, choices.keys()))
+#             raise ValueError(err)
+#
+#     model = resnet_model.Model(resnet_size=resnet_size,
+#             bottleneck=True,
+#             num_classes=num_classes,
+#             num_filters=64,
+#             kernel_size=7,
+#             conv_stride=2,
+#             first_pool_size=3,
+#             first_pool_stride=2,
+#             block_sizes=_get_block_sizes(resnet_size),
+#             block_strides=[1, 2, 2, 2],
+#             resnet_version=resnet_version,
+#             data_format=data_format,
+#             dtype=dtype
+#         )
+#
+#     logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
+#
+#
+#     ###################################################################################################################
+#
+#     predictions = {
+#         'classes': tf.argmax(logits, axis=1),
+#         'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
+#     }
+#
+#     if mode == tf.estimator.ModeKeys.PREDICT:
+#         # Return the predictions and the specification for serving a SavedModel
+#         return tf.estimator.EstimatorSpec(
+#             mode=mode,
+#             predictions=predictions,
+#             export_outputs={
+#                 'predict': tf.estimator.export.PredictOutput(predictions)
+#             })
+#
+#     # Calculate loss, which includes softmax cross entropy and L2 regularization.
+#     cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+#         logits=logits, labels=labels)
+#
+#     # Create a tensor named cross_entropy for logging purposes.
+#     tf.identity(cross_entropy, name='cross_entropy')
+#     tf.summary.scalar('cross_entropy', cross_entropy)
+#
+#     tf.losses.sparse_softmax_cross_entropy(labels, logits, weights=1.0)
+#     # tf.losses.sparse_softmax_cross_entropy(labels, aux_logits, weights=0.4)
+#
+#     losses = tf.get_collection(tf.GraphKeys.LOSSES)
+#     regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+#     total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
+#
+#     tf.summary.scalar('l2_loss', total_loss)
+#
+#     if mode == tf.estimator.ModeKeys.TRAIN:
+#         global_step = tf.train.get_or_create_global_step()
+#
+#         learning_rate = learning_rate_fn(global_step)
+#
+#         # Create a tensor named learning_rate for logging purposes
+#         tf.identity(learning_rate, name='learning_rate')
+#         tf.summary.scalar('learning_rate', learning_rate)
+#
+#         optimizer = tf.train.MomentumOptimizer(
+#             learning_rate=learning_rate,
+#             momentum=momentum
+#         )
+#
+#         grad_vars = optimizer.compute_gradients(total_loss)
+#         minimize_op = optimizer.apply_gradients(grad_vars, global_step)
+#
+#         train_op = tf.group(minimize_op, tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+#     else:
+#         train_op = None
+#
+#     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
+#     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+#                                                     targets=labels,
+#                                                     k=5,
+#                                                     name='top_5_op'))
+#     metrics = {'accuracy': accuracy,
+#                'accuracy_top_5': accuracy_top_5}
+#
+#     # Create a tensor named train_accuracy for logging purposes
+#     tf.identity(accuracy[1], name='train_accuracy')
+#     tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+#     tf.summary.scalar('train_accuracy', accuracy[1])
+#     tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+#
+#     return tf.estimator.EstimatorSpec(
+#         mode=mode,
+#         predictions=predictions,
+#         loss=total_loss,
+#         train_op=train_op,
+#         eval_metric_ops=metrics)
+
+
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
                     loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE,
                     fine_tune=False):
     """Shared functionality for different resnet model_fns.
-  
+
     Initializes the ResnetModel representing the model layers
     and uses that model to build the necessary EstimatorSpecs for
     the `mode` in question. For training, this means building losses,
     the optimizer, and the train op that get passed into the EstimatorSpec.
     For evaluation and prediction, the EstimatorSpec is returned without
     a train op, but with the necessary parameters for the given mode.
-  
+
     Args:
       features: tensor representing input images
       labels: tensor representing class labels for all input images
@@ -252,7 +441,7 @@ def resnet_model_fn(features, labels, mode, model_class,
         from the loss.
       dtype: the TensorFlow dtype to use for calculations.
       fine_tune: If True only train the dense layers(final layers).
-  
+
     Returns:
       EstimatorSpec parameterized according to the input params and the
       current mode.
@@ -263,71 +452,15 @@ def resnet_model_fn(features, labels, mode, model_class,
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    # model = model_class(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
+    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                        dtype=dtype)
 
-    # from official.resnet.slim import inception_model
-    num_classes = 1000
-    # with tf.variable_scope(tf.get_variable_scope()):
-    #     logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
+    logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
-    # from official.resnet.slim import vgg
-    #
-    # logits, endpoints = vgg.vgg_16(features, num_classes=num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
-
-    from official.resnet import resnet_model
-
-    def _get_block_sizes(resnet_size):
-        """Retrieve the size of each block_layer in the ResNet model.
-
-        The number of block layers used for the Resnet model varies according
-        to the size of the model. This helper grabs the layer set we want, throwing
-        an error if a non-standard size has been selected.
-
-        Args:
-          resnet_size: The number of convolutional layers needed in the model.
-
-        Returns:
-          A list of block sizes to use in building the model.
-
-        Raises:
-          KeyError: if invalid resnet_size is received.
-        """
-        choices = {
-            18: [2, 2, 2, 2],
-            34: [3, 4, 6, 3],
-            50: [3, 4, 6, 3],
-            101: [3, 4, 23, 3],
-            152: [3, 8, 36, 3],
-            200: [3, 24, 36, 3]
-        }
-
-        try:
-            return choices[resnet_size]
-        except KeyError:
-            err = ('Could not find layers for selected Resnet size.\n'
-                   'Size received: {}; sizes allowed: {}.'.format(
-                resnet_size, choices.keys()))
-            raise ValueError(err)
-
-    model = resnet_model.Model(resnet_size=resnet_size,
-            bottleneck=True,
-            num_classes=num_classes,
-            num_filters=64,
-            kernel_size=7,
-            conv_stride=2,
-            first_pool_size=3,
-            first_pool_stride=2,
-            block_sizes=_get_block_sizes(resnet_size),
-            block_strides=[1, 2, 2, 2],
-            resnet_version=resnet_version,
-            data_format=data_format,
-            dtype=dtype
-        )
-
-    logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
-
-
-    ###################################################################################################################
+    # This acts as a no-op if the logits are already in fp32 (provided logits are
+    # not a SparseTensor). If dtype is is low precision, logits must be cast to
+    # fp32 for numerical stability.
+    logits = tf.cast(logits, tf.float32)
 
     predictions = {
         'classes': tf.argmax(logits, axis=1),
@@ -351,14 +484,20 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
 
-    tf.losses.sparse_softmax_cross_entropy(labels, logits, weights=1.0)
-    # tf.losses.sparse_softmax_cross_entropy(labels, aux_logits, weights=0.4)
+    # If no loss_filter_fn is passed, assume we want the default behavior,
+    # which is that batch_normalization variables are excluded from loss.
+    def exclude_batch_norm(name):
+        return 'batch_normalization' not in name
 
-    losses = tf.get_collection(tf.GraphKeys.LOSSES)
-    regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
+    loss_filter_fn = loss_filter_fn or exclude_batch_norm
 
-    tf.summary.scalar('l2_loss', total_loss)
+    # Add weight decay to the loss.
+    l2_loss = weight_decay * tf.add_n(
+        # loss is computed using fp32 for numerical stability.
+        [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
+         if loss_filter_fn(v.name)])
+    tf.summary.scalar('l2_loss', l2_loss)
+    loss = cross_entropy + l2_loss
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
@@ -374,10 +513,12 @@ def resnet_model_fn(features, labels, mode, model_class,
             momentum=momentum
         )
 
-        grad_vars = optimizer.compute_gradients(total_loss)
+
+        grad_vars = optimizer.compute_gradients(loss)
         minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
-        train_op = tf.group(minimize_op, tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        train_op = tf.group(minimize_op, update_ops)
     else:
         train_op = None
 
@@ -398,10 +539,9 @@ def resnet_model_fn(features, labels, mode, model_class,
     return tf.estimator.EstimatorSpec(
         mode=mode,
         predictions=predictions,
-        loss=total_loss,
+        loss=loss,
         train_op=train_op,
         eval_metric_ops=metrics)
-
 
 def resnet_main(
         flags_obj, model_function, input_function, dataset_name, shape=None):
