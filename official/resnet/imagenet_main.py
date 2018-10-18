@@ -315,22 +315,26 @@ def imagenet_model_fn(features, labels, mode, params):
 
     # model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
 
-    model = resnet_model.Model(resnet_size=resnet_size,
-        bottleneck=True,
-        num_classes=_NUM_CLASSES,
-        num_filters=64,
-        kernel_size=7,
-        conv_stride=2,
-        first_pool_size=3,
-        first_pool_stride=2,
-        block_sizes=_get_block_sizes(resnet_size),
-        block_strides=[1, 2, 2, 2],
-        resnet_version=resnet_version,
-        data_format=data_format,
-        dtype=dtype
-    )
+    # model = resnet_model.Model(resnet_size=resnet_size,
+    #     bottleneck=True,
+    #     num_classes=_NUM_CLASSES,
+    #     num_filters=64,
+    #     kernel_size=7,
+    #     conv_stride=2,
+    #     first_pool_size=3,
+    #     first_pool_stride=2,
+    #     block_sizes=_get_block_sizes(resnet_size),
+    #     block_strides=[1, 2, 2, 2],
+    #     resnet_version=resnet_version,
+    #     data_format=data_format,
+    #     dtype=dtype
+    # )
+    #
+    # logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
-    logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
+    from official.resnet.slim import inception_model
+
+    logits, axu_logits = inception_model.inference(features, num_classes=1001, for_training=mode == tf.estimator.ModeKeys.TRAIN, restore_logits=False)
 
     # This acts as a no-op if the logits are already in fp32 (provided logits are
     # not a SparseTensor). If dtype is is low precision, logits must be cast to
