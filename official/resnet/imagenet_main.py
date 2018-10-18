@@ -326,7 +326,7 @@ def imagenet_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     learning_rate_fn = learning_rate_fn
     momentum = 0.9
-    data_format = params['data_format'],
+    data_format = params['data_format']
     resnet_version = params['resnet_version']
     loss_filter_fn = None
     dtype = params['dtype']
@@ -334,9 +334,8 @@ def imagenet_model_fn(features, labels, mode, params):
     # Generate a summary node for the images
     tf.summary.image('images', features, max_outputs=6)
     # Checks that features/images have same data type being used for calculations.
-    # assert features.dtype == dtype
+    assert features.dtype == dtype
 
-    print(f'liupeng-debug: {features.dtype} {dtype}')
     model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
 
