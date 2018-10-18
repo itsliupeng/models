@@ -497,7 +497,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     #     [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
     #      if loss_filter_fn(v.name)])
     # tf.summary.scalar('l2_loss', l2_loss)
-    l2_loss = tf.losses.get_regularization_loss()
+    l2_loss = weight_decay * tf.losses.get_regularization_loss()
     loss = cross_entropy + l2_loss
 
     if mode == tf.estimator.ModeKeys.TRAIN:
