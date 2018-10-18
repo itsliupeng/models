@@ -266,7 +266,6 @@ def resnet_model_fn(features, labels, mode, model_class,
     # model = model_class(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
 
     from official.resnet.slim import inception_model
-    from official.resnet.slim import losses as inception_losses
     num_classes = 1000
     with tf.variable_scope(tf.get_variable_scope()):
         logits, aux_logits = inception_model.inference(features, num_classes, for_training=mode == tf.estimator.ModeKeys.TRAIN)
