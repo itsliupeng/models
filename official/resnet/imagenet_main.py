@@ -295,7 +295,6 @@ def imagenet_model_fn(features, labels, mode, params):
     momentum = 0.9
     data_format = params['data_format']
     resnet_version = params['resnet_version']
-    loss_filter_fn = None
     dtype = params['dtype']
 
     # Warmup and higher lr may not be valid for fine tuning with small batches
@@ -365,18 +364,7 @@ def imagenet_model_fn(features, labels, mode, params):
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
 
-    # If no loss_filter_fn is passed, assume we want the default behavior,
-    # which is that batch_normalization variables are excluded from loss.
-    def exclude_batch_norm(name):
-        return 'batch_normalization' not in name
-
-    loss_filter_fn = loss_filter_fn or exclude_batch_norm
-
-    # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n(
-        # loss is computed using fp32 for numerical stability.
-        [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
-         if loss_filter_fn(v.name)])
+    l2_loss = weight_decay * tf.losses.get_regularization_loss()
     tf.summary.scalar('l2_loss', l2_loss)
     loss = cross_entropy + aux_loss + l2_loss
 
