@@ -26,6 +26,14 @@ from absl import flags
 
 import horovod.tensorflow as hvd
 
+import functools
+import math
+
+from official.utils.export import export
+from official.utils.logs import hooks_helper
+from official.utils.misc import distribution_utils
+from official.utils.misc import model_helpers
+
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
@@ -378,10 +386,8 @@ def imagenet_model_fn(features, labels, mode, params):
         tf.identity(learning_rate, name='learning_rate')
         tf.summary.scalar('learning_rate', learning_rate)
 
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate,
-            momentum=momentum
-        )
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate * hvd.size(), momentum=momentum)
+        optimizer = hvd.DistributedOptimizer(optimizer)
 
         grad_vars = optimizer.compute_gradients(loss)
         minimize_op = optimizer.apply_gradients(grad_vars, global_step)
@@ -431,7 +437,7 @@ def run_imagenet(flags_obj):
                       get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
                       input_fn)
 
-    resnet_run_loop.resnet_main(
+    imagenet_main(
         flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
         shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
@@ -440,6 +446,157 @@ def main(_):
     with logger.benchmark_context(flags.FLAGS):
         run_imagenet(flags.FLAGS)
 
+
+def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape=None):
+    """Shared main loop for ResNet Models.
+
+    Args:
+      flags_obj: An object containing parsed flags. See define_resnet_flags()
+        for details.
+      model_function: the function that instantiates the Model and builds the
+        ops for train/eval. This will be passed directly into the estimator.
+      input_function: the function that processes the dataset and returns a
+        dataset that the estimator can train on. This will be wrapped with
+        all the relevant flags for running and passed to estimator.
+      dataset_name: the name of the dataset for training and evaluation. This is
+        used for logging purpose.
+      shape: list of ints representing the shape of the images used for training.
+        This is only used if flags_obj.export_dir is passed.
+    """
+
+
+    hvd.init()
+
+    model_helpers.apply_clean(flags.FLAGS)
+
+    # Using the Winograd non-fused algorithms provides a small performance boost.
+    os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+    # Create session config based on values of inter_op_parallelism_threads and
+    # intra_op_parallelism_threads. Note that we default to having
+    # allow_soft_placement = True, which is required for multi-GPU and not
+    # harmful for other modes.
+    session_config = tf.ConfigProto(
+        inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
+        intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
+        allow_soft_placement=True)
+
+    session_config.gpu_options.allow_growth = True
+    session_config.gpu_options.visible_device_list = str(hvd.local_rank())
+
+    run_config = tf.estimator.RunConfig(session_config=session_config)
+
+    # initialize our model with all but the dense layer from pretrained resnet
+    if flags_obj.pretrained_model_checkpoint_path is not None:
+        warm_start_settings = tf.estimator.WarmStartSettings(
+            flags_obj.pretrained_model_checkpoint_path,
+            vars_to_warm_start='^(?!.*dense)')
+    else:
+        warm_start_settings = None
+
+    model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
+
+    classifier = tf.estimator.Estimator(
+        model_fn=model_function, model_dir=model_dir, config=run_config,
+        warm_start_from=warm_start_settings, params={
+            'resnet_size': int(flags_obj.resnet_size),
+            'data_format': flags_obj.data_format,
+            'batch_size': flags_obj.batch_size,
+            'resnet_version': int(flags_obj.resnet_version),
+            'loss_scale': flags_core.get_loss_scale(flags_obj),
+            'dtype': flags_core.get_tf_dtype(flags_obj),
+            'fine_tune': flags_obj.fine_tune
+        })
+
+    run_params = {
+        'batch_size': flags_obj.batch_size,
+        'dtype': flags_core.get_tf_dtype(flags_obj),
+        'resnet_size': flags_obj.resnet_size,
+        'resnet_version': flags_obj.resnet_version,
+        'synthetic_data': flags_obj.use_synthetic_data,
+        'train_epochs': flags_obj.train_epochs,
+    }
+    if flags_obj.use_synthetic_data:
+        dataset_name = dataset_name + '-synthetic'
+
+    benchmark_logger = logger.get_benchmark_logger()
+    benchmark_logger.log_run_info('resnet', dataset_name, run_params,
+                                  test_id=flags_obj.benchmark_test_id)
+
+    train_hooks = hooks_helper.get_train_hooks(
+        flags_obj.hooks,
+        model_dir=flags_obj.model_dir,
+        batch_size=flags_obj.batch_size)
+
+    bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
+    train_hooks.append(bcast_hook)
+
+    def input_fn_train(num_epochs):
+        return input_function(
+            is_training=True, data_dir=flags_obj.data_dir,
+            batch_size=distribution_utils.per_device_batch_size(
+                flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+            num_epochs=num_epochs,
+            num_gpus=flags_core.get_num_gpus(flags_obj),
+            dtype=flags_core.get_tf_dtype(flags_obj))
+
+    def input_fn_eval():
+        return input_function(
+            is_training=False, data_dir=flags_obj.data_dir,
+            batch_size=distribution_utils.per_device_batch_size(
+                flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+            num_epochs=1,
+            dtype=flags_core.get_tf_dtype(flags_obj))
+
+    if flags_obj.eval_only or not flags_obj.train_epochs:
+        # If --eval_only is set, perform a single loop with zero train epochs.
+        schedule, n_loops = [0], 1
+    else:
+        # Compute the number of times to loop while training. All but the last
+        # pass will train for `epochs_between_evals` epochs, while the last will
+        # train for the number needed to reach `training_epochs`. For instance if
+        #   train_epochs = 25 and epochs_between_evals = 10
+        # schedule will be set to [10, 10, 5]. That is to say, the loop will:
+        #   Train for 10 epochs and then evaluate.
+        #   Train for another 10 epochs and then evaluate.
+        #   Train for a final 5 epochs (to reach 25 epochs) and then evaluate.
+        n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
+        schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
+        schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
+
+    for cycle_index, num_train_epochs in enumerate(schedule):
+        tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+
+        if num_train_epochs:
+            classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
+                             hooks=train_hooks, max_steps=flags_obj.max_train_steps)
+
+        tf.logging.info('Starting to evaluate.')
+
+        # flags_obj.max_train_steps is generally associated with testing and
+        # profiling. As a result it is frequently called with synthetic data, which
+        # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+        # eval (which is generally unimportant in those circumstances) to terminate.
+        # Note that eval will run for max_train_steps each loop, regardless of the
+        # global_step count.
+        eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=flags_obj.max_train_steps)
+
+        benchmark_logger.log_evaluation_result(eval_results)
+
+        if model_helpers.past_stop_threshold(flags_obj.stop_threshold, eval_results['accuracy']):
+            break
+
+    if flags_obj.export_dir is not None:
+        # Exports a saved model for the given classifier.
+        export_dtype = flags_core.get_tf_dtype(flags_obj)
+        if flags_obj.image_bytes_as_serving_input:
+            input_receiver_fn = functools.partial(
+                resnet_run_loop.image_bytes_serving_input_fn, shape, dtype=export_dtype)
+        else:
+            input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
+                shape, batch_size=flags_obj.batch_size, dtype=export_dtype)
+        classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
+                                     strip_default_attrs=True)
 
 if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
