@@ -403,6 +403,40 @@ def learning_rate_with_decay(
 #         eval_metric_ops=metrics)
 
 
+def _get_block_sizes(resnet_size):
+    """Retrieve the size of each block_layer in the ResNet model.
+
+    The number of block layers used for the Resnet model varies according
+    to the size of the model. This helper grabs the layer set we want, throwing
+    an error if a non-standard size has been selected.
+
+    Args:
+      resnet_size: The number of convolutional layers needed in the model.
+
+    Returns:
+      A list of block sizes to use in building the model.
+
+    Raises:
+      KeyError: if invalid resnet_size is received.
+    """
+    choices = {
+        18: [2, 2, 2, 2],
+        34: [3, 4, 6, 3],
+        50: [3, 4, 6, 3],
+        101: [3, 4, 23, 3],
+        152: [3, 8, 36, 3],
+        200: [3, 24, 36, 3]
+    }
+
+    try:
+        return choices[resnet_size]
+    except KeyError:
+        err = ('Could not find layers for selected Resnet size.\n'
+               'Size received: {}; sizes allowed: {}.'.format(
+            resnet_size, choices.keys()))
+        raise ValueError(err)
+
+
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, resnet_version, loss_scale,
@@ -452,9 +486,21 @@ def resnet_model_fn(features, labels, mode, model_class,
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    model = model_class(resnet_size, data_format, resnet_version=resnet_version,
-                        dtype=dtype)
-
+    num_classes = 1000
+    model = resnet_model.Model(resnet_size=resnet_size,
+                               bottleneck=True,
+                               num_classes=num_classes,
+                               num_filters=64,
+                               kernel_size=7,
+                               conv_stride=2,
+                               first_pool_size=3,
+                               first_pool_stride=2,
+                               block_sizes=_get_block_sizes(resnet_size),
+                               block_strides=[1, 2, 2, 2],
+                               resnet_version=resnet_version,
+                               data_format=data_format,
+                               dtype=dtype
+                               )
     logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
     # This acts as a no-op if the logits are already in fp32 (provided logits are
