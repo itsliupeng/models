@@ -313,8 +313,22 @@ def imagenet_model_fn(features, labels, mode, params):
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version,
-                        dtype=dtype)
+    # model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
+
+    model = resnet_model.Model(resnet_size=resnet_size,
+        bottleneck=True,
+        num_classes=_NUM_CLASSES,
+        num_filters=64,
+        kernel_size=7,
+        conv_stride=2,
+        first_pool_size=3,
+        first_pool_stride=2,
+        block_sizes=_get_block_sizes(resnet_size),
+        block_strides=[1, 2, 2, 2],
+        resnet_version=resnet_version,
+        data_format=data_format,
+        dtype=dtype
+    )
 
     logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -346,19 +360,19 @@ def imagenet_model_fn(features, labels, mode, params):
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
 
-    # # If no loss_filter_fn is passed, assume we want the default behavior,
-    # # which is that batch_normalization variables are excluded from loss.
-    # def exclude_batch_norm(name):
-    #     return 'batch_normalization' not in name
-    #
-    # loss_filter_fn = loss_filter_fn or exclude_batch_norm
-    #
-    # # Add weight decay to the loss.
-    # l2_loss = weight_decay * tf.add_n(
-    #     # loss is computed using fp32 for numerical stability.
-    #     [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
-    #      if loss_filter_fn(v.name)])
-    # tf.summary.scalar('l2_loss', l2_loss)
+    # If no loss_filter_fn is passed, assume we want the default behavior,
+    # which is that batch_normalization variables are excluded from loss.
+    def exclude_batch_norm(name):
+        return 'batch_normalization' not in name
+
+    loss_filter_fn = loss_filter_fn or exclude_batch_norm
+
+    # Add weight decay to the loss.
+    l2_loss = weight_decay * tf.add_n(
+        # loss is computed using fp32 for numerical stability.
+        [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
+         if loss_filter_fn(v.name)])
+    tf.summary.scalar('l2_loss', l2_loss)
     loss = cross_entropy
 
     if mode == tf.estimator.ModeKeys.TRAIN:
