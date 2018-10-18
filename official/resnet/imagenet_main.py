@@ -378,7 +378,7 @@ def imagenet_model_fn(features, labels, mode, params):
         [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
          if loss_filter_fn(v.name)])
     tf.summary.scalar('l2_loss', l2_loss)
-    loss = cross_entropy + aux_loss
+    loss = cross_entropy + aux_loss + l2_loss
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
