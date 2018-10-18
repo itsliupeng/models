@@ -322,14 +322,14 @@ def imagenet_model_fn(features, labels, mode, params):
     #     fine_tune=params['fine_tune']
     # )
 
-    resnet_size = params['resnet_size'],
-    weight_decay = 1e-4,
-    learning_rate_fn = learning_rate_fn,
-    momentum = 0.9,
+    resnet_size = params['resnet_size']
+    weight_decay = 1e-4
+    learning_rate_fn = learning_rate_fn
+    momentum = 0.9
     data_format = params['data_format'],
-    resnet_version = params['resnet_version'],
-    loss_filter_fn = None,
-    dtype = params['dtype'],
+    resnet_version = params['resnet_version']
+    loss_filter_fn = None
+    dtype = params['dtype']
 
     # Generate a summary node for the images
     tf.summary.image('images', features, max_outputs=6)
@@ -360,6 +360,7 @@ def imagenet_model_fn(features, labels, mode, params):
             export_outputs={
                 'predict': tf.estimator.export.PredictOutput(predictions)
             })
+
 
     # Calculate loss, which includes softmax cross entropy and L2 regularization.
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(
