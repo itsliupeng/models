@@ -328,16 +328,15 @@ def imagenet_model_fn(features, labels, mode, params):
     momentum = 0.9,
     data_format = params['data_format'],
     resnet_version = params['resnet_version'],
-    loss_scale = params['loss_scale'],
     loss_filter_fn = None,
     dtype = params['dtype'],
-    fine_tune = params['fine_tune']
 
     # Generate a summary node for the images
     tf.summary.image('images', features, max_outputs=6)
     # Checks that features/images have same data type being used for calculations.
-    assert features.dtype == dtype
+    # assert features.dtype == dtype
 
+    print(f'liupeng-debug: {features.dtype} {dtype}')
     model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version,
                         dtype=dtype)
 
