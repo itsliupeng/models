@@ -101,6 +101,9 @@ def dataset(directory, images_file, labels_file):
 
     images = tf.data.FixedLengthRecordDataset(
         images_file, 28 * 28, header_bytes=16).map(decode_image)
+
+    images = tf.image.grayscale_to_rgb(tf.reshape(images, [28, 28, 1]))
+
     labels = tf.data.FixedLengthRecordDataset(
         labels_file, 1, header_bytes=8).map(decode_label)
     return tf.data.Dataset.zip((images, labels))
