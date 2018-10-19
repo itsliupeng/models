@@ -100,9 +100,8 @@ def dataset(directory, images_file, labels_file):
         return tf.to_int32(label)
 
     images = tf.data.FixedLengthRecordDataset(
-        images_file, 28 * 28, header_bytes=16).map(decode_image)
-
-    images = tf.image.grayscale_to_rgb(tf.reshape(images, [-1, 28, 28, 1]))
+        images_file, 28 * 28, header_bytes=16).map(decode_image)\
+        .map(lambda x: tf.image.grayscale_to_rgb(tf.reshape(x, [28, 28, 1])))
 
     labels = tf.data.FixedLengthRecordDataset(
         labels_file, 1, header_bytes=8).map(decode_label)
