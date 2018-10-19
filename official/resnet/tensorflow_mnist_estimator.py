@@ -306,7 +306,7 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the Estimator
-    mnist_classifier = tf.Estimator(
+    mnist_classifier = tf.estimator.Estimator(
         model_fn=cnn_model_fn, model_dir=model_dir,
         config=tf.estimator.RunConfig(session_config=config))
 
