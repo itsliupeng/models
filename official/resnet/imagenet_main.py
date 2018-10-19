@@ -28,12 +28,11 @@ from absl import flags
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
+from official.resnet.slim import inception_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-from official.resnet.slim import inception_model
 
 _DEFAULT_IMAGE_SIZE = 299
 _NUM_CHANNELS = 3
@@ -270,7 +269,9 @@ def imagenet_model_fn(features, labels, mode, params):
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
 
-    logits, aux_logits = inception_model.inference(features, num_classes=1001, for_training=mode == tf.estimator.ModeKeys.TRAIN, restore_logits=False)
+    logits, aux_logits = inception_model.inference(features, num_classes=1001,
+                                                   for_training=mode == tf.estimator.ModeKeys.TRAIN,
+                                                   restore_logits=False)
 
     # This acts as a no-op if the logits are already in fp32 (provided logits are
     # not a SparseTensor). If dtype is is low precision, logits must be cast to
@@ -352,26 +353,11 @@ def define_imagenet_flags():
     flags_core.set_defaults(train_epochs=90)
 
 
-def run_imagenet(flags_obj):
-    """Run ResNet ImageNet training and eval loop.
-  
-    Args:
-      flags_obj: An object containing parsed flag values.
-    """
-    input_function = (flags_obj.use_synthetic_data and
-                      get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
-                      input_fn)
-
-    imagenet_main(
-        flags_obj, imagenet_model_fn, input_function, DATASET_NAME)
-
-
 def main(_):
-    with logger.benchmark_context(flags.FLAGS):
-        run_imagenet(flags.FLAGS)
+    imagenet_main(flags.FLAGS, imagenet_model_fn, DATASET_NAME)
 
 
-def imagenet_main(flags_obj, model_function, input_function, dataset_name):
+def imagenet_main(flags_obj, model_function, dataset_name):
     if hvd.rank() == 0:
         model_helpers.apply_clean(flags.FLAGS)
 
@@ -406,10 +392,6 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name):
         'train_epochs': flags_obj.train_epochs,
     }
 
-    benchmark_logger = logger.get_benchmark_logger()
-    benchmark_logger.log_run_info('resnet', dataset_name, run_params,
-                                  test_id=flags_obj.benchmark_test_id)
-
     train_hooks = hooks_helper.get_train_hooks(
         flags_obj.hooks,
         model_dir=flags_obj.model_dir,
@@ -417,6 +399,10 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name):
 
     bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
     train_hooks.append(bcast_hook)
+
+    input_function = (flags_obj.use_synthetic_data and
+                      get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
+                      input_fn)
 
     def input_fn_train(num_epochs):
         return input_function(
@@ -469,7 +455,7 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name):
 
         if hvd.rank() == 0:
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=flags_obj.max_train_steps)
-            benchmark_logger.log_evaluation_result(eval_results)
+            tf.logging.info(eval_results)
 
 
 if __name__ == '__main__':
