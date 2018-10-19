@@ -27,8 +27,6 @@ learn = tf.contrib.learn
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
-from official.resnet import dataset as mnist_ds
-
 
 def cnn_model_fn(features, labels, mode):
     """Model function for CNN."""
@@ -167,23 +165,13 @@ def main(unused_argv):
     # restored from a checkpoint.
     bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
 
-    # Set up training and evaluation input functions.
-    def train_input_fn():
-        """Prepare data for training."""
-
-        # When choosing shuffle buffer sizes, larger sizes result in better
-        # randomness, while smaller sizes use less memory. MNIST is a small
-        # enough dataset that we can easily shuffle the full epoch.
-        ds = mnist_ds.train('MNIST-data')
-        ds = ds.cache().shuffle(buffer_size=50000).batch(64)
-
-        # Iterate through the dataset a set number (`epochs_between_evals`) of times
-        # during each training session.
-        ds = ds.repeat(10)
-        return ds
-
-    def eval_input_fn():
-        return mnist_ds.test('MNIST-data').batch(64).make_one_shot_iterator().get_next()
+    # Train the model
+    train_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": train_data},
+        y=train_labels,
+        batch_size=100,
+        num_epochs=None,
+        shuffle=True)
 
     # Horovod: adjust number of steps based on number of GPUs.
     mnist_classifier.train(
@@ -192,6 +180,11 @@ def main(unused_argv):
         hooks=[bcast_hook])
 
     # Evaluate the model and print results
+    eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": eval_data},
+        y=eval_labels,
+        num_epochs=1,
+        shuffle=False)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     print(eval_results)
 
