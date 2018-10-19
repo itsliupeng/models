@@ -363,8 +363,7 @@ def run_imagenet(flags_obj):
                       input_fn)
 
     imagenet_main(
-        flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
-        shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
+        flags_obj, imagenet_model_fn, input_function, DATASET_NAME)
 
 
 def main(_):
