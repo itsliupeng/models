@@ -366,7 +366,7 @@ def imagenet_main(flags_obj, model_function, dataset_name):
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    # config.gpu_options.visible_device_list = str(hvd.local_rank())
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
@@ -383,15 +383,6 @@ def imagenet_main(flags_obj, model_function, dataset_name):
             'fine_tune': flags_obj.fine_tune
         })
 
-    run_params = {
-        'batch_size': flags_obj.batch_size,
-        'dtype': flags_core.get_tf_dtype(flags_obj),
-        'resnet_size': flags_obj.resnet_size,
-        'resnet_version': flags_obj.resnet_version,
-        'synthetic_data': flags_obj.use_synthetic_data,
-        'train_epochs': flags_obj.train_epochs,
-    }
-
     train_hooks = hooks_helper.get_train_hooks(
         flags_obj.hooks,
         model_dir=flags_obj.model_dir,
@@ -400,9 +391,7 @@ def imagenet_main(flags_obj, model_function, dataset_name):
     bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
     train_hooks.append(bcast_hook)
 
-    input_function = (flags_obj.use_synthetic_data and
-                      get_synth_input_fn(flags_core.get_tf_dtype(flags_obj)) or
-                      input_fn)
+    input_function = input_fn
 
     def input_fn_train(num_epochs):
         return input_function(
