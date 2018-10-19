@@ -27,13 +27,13 @@ from absl import flags
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
-from resnet.slim import resnet_model
 from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+from official.resnet.slim import inception_model
 
 _DEFAULT_IMAGE_SIZE = 299
 _NUM_CHANNELS = 3
@@ -213,51 +213,6 @@ def get_synth_input_fn(dtype):
         dtype=dtype)
 
 
-###############################################################################
-# Running the model
-###############################################################################
-class ImagenetModel(resnet_model.Model):
-    """Model class with appropriate defaults for Imagenet data."""
-
-    def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-                 resnet_version=resnet_model.DEFAULT_VERSION,
-                 dtype=resnet_model.DEFAULT_DTYPE):
-        """These are the parameters that work for Imagenet data.
-    
-        Args:
-          resnet_size: The number of convolutional layers needed in the model.
-          data_format: Either 'channels_first' or 'channels_last', specifying which
-            data format to use when setting up the model.
-          num_classes: The number of output classes needed from the model. This
-            enables users to extend the same model to their own datasets.
-          resnet_version: Integer representing which version of the ResNet network
-            to use. See README for details. Valid values: [1, 2]
-          dtype: The TensorFlow dtype to use for calculations.
-        """
-
-        # For bigger models, we want to use "bottleneck" layers
-        if resnet_size < 50:
-            bottleneck = False
-        else:
-            bottleneck = True
-
-        super(ImagenetModel, self).__init__(
-            resnet_size=resnet_size,
-            bottleneck=bottleneck,
-            num_classes=num_classes,
-            num_filters=64,
-            kernel_size=7,
-            conv_stride=2,
-            first_pool_size=3,
-            first_pool_stride=2,
-            block_sizes=_get_block_sizes(resnet_size),
-            block_strides=[1, 2, 2, 2],
-            resnet_version=resnet_version,
-            data_format=data_format,
-            dtype=dtype
-        )
-
-
 def _get_block_sizes(resnet_size):
     """Retrieve the size of each block_layer in the ResNet model.
   
@@ -310,33 +265,10 @@ def imagenet_model_fn(features, labels, mode, params):
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
 
-
-
     # Generate a summary node for the images
     tf.summary.image('images', features, max_outputs=6)
     # Checks that features/images have same data type being used for calculations.
     assert features.dtype == dtype
-
-    # model = ImagenetModel(resnet_size, data_format, resnet_version=resnet_version, dtype=dtype)
-
-    # model = resnet_model.Model(resnet_size=resnet_size,
-    #     bottleneck=True,
-    #     num_classes=_NUM_CLASSES,
-    #     num_filters=64,
-    #     kernel_size=7,
-    #     conv_stride=2,
-    #     first_pool_size=3,
-    #     first_pool_stride=2,
-    #     block_sizes=_get_block_sizes(resnet_size),
-    #     block_strides=[1, 2, 2, 2],
-    #     resnet_version=resnet_version,
-    #     data_format=data_format,
-    #     dtype=dtype
-    # )
-    #
-    # logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
-
-    from official.resnet.slim import inception_model
 
     logits, aux_logits = inception_model.inference(features, num_classes=1001, for_training=mode == tf.estimator.ModeKeys.TRAIN, restore_logits=False)
 
@@ -362,7 +294,6 @@ def imagenet_model_fn(features, labels, mode, params):
     # Calculate loss, which includes softmax cross entropy and L2 regularization.
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
-
 
     # Create a tensor named cross_entropy for logging purposes.
     tf.identity(cross_entropy, name='cross_entropy')
