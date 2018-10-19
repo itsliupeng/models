@@ -366,7 +366,7 @@ def imagenet_main(flags_obj, model_function, dataset_name):
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    config.gpu_options.visible_device_list = str(hvd.local_rank())
+    # config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
@@ -460,6 +460,7 @@ def imagenet_main(flags_obj, model_function, dataset_name):
 
 if __name__ == '__main__':
     hvd.init()
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(hvd.local_rank())
 
     tf.logging.set_verbosity(tf.logging.INFO)
     define_imagenet_flags()
