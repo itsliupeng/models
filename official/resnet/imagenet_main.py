@@ -372,9 +372,6 @@ def main(_):
 
 
 def imagenet_main(flags_obj, model_function, input_function, dataset_name):
-
-    hvd.init()
-
     if hvd.local_rank() == 0:
         model_helpers.apply_clean(flags.FLAGS)
 
@@ -477,6 +474,8 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name):
 
 
 if __name__ == '__main__':
+    hvd.init()
+
     tf.logging.set_verbosity(tf.logging.INFO)
     define_imagenet_flags()
     absl_app.run(main)
