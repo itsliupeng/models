@@ -372,22 +372,21 @@ def main(_):
 
 
 def imagenet_main(flags_obj, model_function, input_function, dataset_name):
-    if hvd.local_rank() == 0:
+    if hvd.rank() == 0:
         model_helpers.apply_clean(flags.FLAGS)
 
     # Using the Winograd non-fused algorithms provides a small performance boost.
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-    session_config = tf.ConfigProto()
-    session_config.gpu_options.allow_growth = True
-    session_config.gpu_options.visible_device_list = str(hvd.local_rank())
-
-    run_config = tf.estimator.RunConfig(session_config=session_config)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
     classifier = tf.estimator.Estimator(
-        model_fn=model_function, model_dir=model_dir, config=run_config,
+        model_fn=model_function, model_dir=model_dir,
+        config=tf.estimator.RunConfig(session_config=config),
         warm_start_from=None, params={
             'resnet_size': int(flags_obj.resnet_size),
             'data_format': flags_obj.data_format,
