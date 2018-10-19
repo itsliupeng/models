@@ -212,8 +212,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
 
 
 def cnn_model_fn(features, labels, mode):
+    weight_decay = 1e-4
+    momentum = 0.9
 
-    logits, _ = inception_model.inference(features, num_classes=1001,
+    logits, aux_logits = inception_model.inference(features, num_classes=1001,
                                                    for_training=mode == tf.estimator.ModeKeys.TRAIN,
                                                    restore_logits=False)
 
@@ -228,20 +230,40 @@ def cnn_model_fn(features, labels, mode):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     # Calculate Loss (for both TRAIN and EVAL modes)
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    # Calculate loss, which includes softmax cross entropy and L2 regularization.
+    cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
+    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
+
+    # Create a tensor named cross_entropy for logging purposes.
+    tf.identity(cross_entropy, name='cross_entropy')
+    tf.summary.scalar('cross_entropy', cross_entropy)
+
+    l2_loss = weight_decay * tf.losses.get_regularization_loss()
+    tf.summary.scalar('l2_loss', l2_loss)
+    loss = cross_entropy + aux_loss + l2_loss
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        # Horovod: scale learning rate by the number of workers.
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate=0.00001 * hvd.size(), momentum=0.9)
 
-        # Horovod: add Horovod Distributed Optimizer.
+        global_step = tf.train.get_or_create_global_step()
+
+        learning_rate = learning_rate_fn(global_step)
+
+        # Create a tensor named learning_rate for logging purposes
+        tf.identity(learning_rate, name='learning_rate')
+        tf.summary.scalar('learning_rate', learning_rate)
+
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate * hvd.size(), momentum=momentum)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
-        train_op = optimizer.minimize(
-            loss=loss,
-            global_step=tf.train.get_global_step())
+        # grad_vars = optimizer.compute_gradients(loss)
+        # minimize_op = optimizer.apply_gradients(grad_vars, global_step)
+
+        minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
+
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        train_op = tf.group(minimize_op, update_ops)
+
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     # Add evaluation metrics (for EVAL mode)
@@ -330,11 +352,11 @@ def main(unused_argv):
 
     # Horovod: adjust number of steps based on number of GPUs.
 
-    num_epochs = 10
+    num_epochs = 90
 
     mnist_classifier.train(
         input_fn=lambda: train_input_fn(num_epochs),
-        steps=20000 // hvd.size(),
+        steps=2000000000 // hvd.size(),
         hooks=[bcast_hook])
 
     # Evaluate the model and print results
@@ -349,8 +371,12 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
     parser.add_argument('--batch_size', help='', type=int, default=32)
 
-
     flags_obj = parser.parse_args()
+
+    learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
+        batch_size=flags_obj.batch_size, batch_denom=256,
+        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
 
 
     tf.app.run()
