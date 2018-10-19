@@ -388,8 +388,11 @@ def main(unused_argv):
             num_epochs=1)
 
     # Horovod: adjust number of steps based on number of GPUs.
+
+    num_epochs = 10
+
     mnist_classifier.train(
-        input_fn=train_input_fn,
+        input_fn=lambda: train_input_fn(num_epochs),
         steps=20000 // hvd.size(),
         hooks=[bcast_hook])
 
