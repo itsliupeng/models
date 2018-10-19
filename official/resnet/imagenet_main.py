@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
@@ -25,20 +26,14 @@ from absl import app as absl_app
 from absl import flags
 
 import horovod.tensorflow as hvd
-
-import functools
-import math
-
-from official.utils.export import export
-from official.utils.logs import hooks_helper
-from official.utils.misc import distribution_utils
-from official.utils.misc import model_helpers
-
 from official.resnet import imagenet_preprocessing
-from official.resnet import resnet_model
+from resnet.slim import resnet_model
 from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
+from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
+from official.utils.misc import model_helpers
 
 _DEFAULT_IMAGE_SIZE = 299
 _NUM_CHANNELS = 3
@@ -419,7 +414,6 @@ def imagenet_model_fn(features, labels, mode, params):
         eval_metric_ops=metrics)
 
 
-
 def define_imagenet_flags():
     resnet_run_loop.define_resnet_flags(
         resnet_size_choices=['18', '34', '50', '101', '152', '200'])
@@ -447,38 +441,15 @@ def main(_):
         run_imagenet(flags.FLAGS)
 
 
-def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape=None):
-    """Shared main loop for ResNet Models.
-
-    Args:
-      flags_obj: An object containing parsed flags. See define_resnet_flags()
-        for details.
-      model_function: the function that instantiates the Model and builds the
-        ops for train/eval. This will be passed directly into the estimator.
-      input_function: the function that processes the dataset and returns a
-        dataset that the estimator can train on. This will be wrapped with
-        all the relevant flags for running and passed to estimator.
-      dataset_name: the name of the dataset for training and evaluation. This is
-        used for logging purpose.
-      shape: list of ints representing the shape of the images used for training.
-        This is only used if flags_obj.export_dir is passed.
-    """
+def imagenet_main(flags_obj, model_function, input_function, dataset_name):
 
     hvd.init()
 
-    model_helpers.apply_clean(flags.FLAGS)
+    if hvd.local_rank() == 0:
+        model_helpers.apply_clean(flags.FLAGS)
 
     # Using the Winograd non-fused algorithms provides a small performance boost.
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-
-    # Create session config based on values of inter_op_parallelism_threads and
-    # intra_op_parallelism_threads. Note that we default to having
-    # allow_soft_placement = True, which is required for multi-GPU and not
-    # harmful for other modes.
-    # session_config = tf.ConfigProto(
-    #     inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
-    #     intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
-    #     allow_soft_placement=True)
 
     session_config = tf.ConfigProto()
     session_config.gpu_options.allow_growth = True
@@ -508,8 +479,6 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape
         'synthetic_data': flags_obj.use_synthetic_data,
         'train_epochs': flags_obj.train_epochs,
     }
-    if flags_obj.use_synthetic_data:
-        dataset_name = dataset_name + '-synthetic'
 
     benchmark_logger = logger.get_benchmark_logger()
     benchmark_logger.log_run_info('resnet', dataset_name, run_params,
@@ -576,20 +545,6 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=flags_obj.max_train_steps)
             benchmark_logger.log_evaluation_result(eval_results)
 
-        if model_helpers.past_stop_threshold(flags_obj.stop_threshold, eval_results['accuracy']):
-            break
-
-    if flags_obj.export_dir is not None:
-        # Exports a saved model for the given classifier.
-        export_dtype = flags_core.get_tf_dtype(flags_obj)
-        if flags_obj.image_bytes_as_serving_input:
-            input_receiver_fn = functools.partial(
-                resnet_run_loop.image_bytes_serving_input_fn, shape, dtype=export_dtype)
-        else:
-            input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-                shape, batch_size=flags_obj.batch_size, dtype=export_dtype)
-        classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn,
-                                     strip_default_attrs=True)
 
 if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
