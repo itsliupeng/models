@@ -20,7 +20,9 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+
 import horovod.tensorflow as hvd
+
 learn = tf.contrib.learn
 
 tf.logging.set_verbosity(tf.logging.INFO)

@@ -464,7 +464,6 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape
         This is only used if flags_obj.export_dir is passed.
     """
 
-
     hvd.init()
 
     model_helpers.apply_clean(flags.FLAGS)
@@ -476,29 +475,22 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape
     # intra_op_parallelism_threads. Note that we default to having
     # allow_soft_placement = True, which is required for multi-GPU and not
     # harmful for other modes.
-    session_config = tf.ConfigProto(
-        inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
-        intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
-        allow_soft_placement=True)
+    # session_config = tf.ConfigProto(
+    #     inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
+    #     intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
+    #     allow_soft_placement=True)
 
+    session_config = tf.ConfigProto()
     session_config.gpu_options.allow_growth = True
     session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     run_config = tf.estimator.RunConfig(session_config=session_config)
 
-    # initialize our model with all but the dense layer from pretrained resnet
-    if flags_obj.pretrained_model_checkpoint_path is not None:
-        warm_start_settings = tf.estimator.WarmStartSettings(
-            flags_obj.pretrained_model_checkpoint_path,
-            vars_to_warm_start='^(?!.*dense)')
-    else:
-        warm_start_settings = None
-
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
     classifier = tf.estimator.Estimator(
         model_fn=model_function, model_dir=model_dir, config=run_config,
-        warm_start_from=warm_start_settings, params={
+        warm_start_from=None, params={
             'resnet_size': int(flags_obj.resnet_size),
             'data_format': flags_obj.data_format,
             'batch_size': flags_obj.batch_size,
@@ -579,9 +571,10 @@ def imagenet_main(flags_obj, model_function, input_function, dataset_name, shape
         # eval (which is generally unimportant in those circumstances) to terminate.
         # Note that eval will run for max_train_steps each loop, regardless of the
         # global_step count.
-        eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=flags_obj.max_train_steps)
 
-        benchmark_logger.log_evaluation_result(eval_results)
+        if hvd.rank() == 0:
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=flags_obj.max_train_steps)
+            benchmark_logger.log_evaluation_result(eval_results)
 
         if model_helpers.past_stop_threshold(flags_obj.stop_threshold, eval_results['accuracy']):
             break
