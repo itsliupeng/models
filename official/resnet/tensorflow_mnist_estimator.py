@@ -272,7 +272,7 @@ def cnn_model_fn(features, labels, mode):
     # Logits layer
     # Input Tensor Shape: [batch_size, 1024]
     # Output Tensor Shape: [batch_size, 10]
-    logits = tf.layers.dense(inputs=dropout, units=10)
+    logits = tf.layers.dense(inputs=dropout, units=1000)
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
@@ -293,7 +293,7 @@ def cnn_model_fn(features, labels, mode):
     if mode == tf.estimator.ModeKeys.TRAIN:
         # Horovod: scale learning rate by the number of workers.
         optimizer = tf.train.MomentumOptimizer(
-            learning_rate=0.001 * hvd.size(), momentum=0.9)
+            learning_rate=0.00001 * hvd.size(), momentum=0.9)
 
         # Horovod: add Horovod Distributed Optimizer.
         optimizer = hvd.DistributedOptimizer(optimizer)
