@@ -449,7 +449,6 @@ def imagenet_main(flags_obj, model_function, dataset_name):
 
 if __name__ == '__main__':
     hvd.init()
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(hvd.local_rank())
 
     tf.logging.set_verbosity(tf.logging.INFO)
     define_imagenet_flags()

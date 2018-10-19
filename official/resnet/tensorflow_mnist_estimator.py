@@ -133,7 +133,7 @@ def main(unused_argv):
     hvd.init()
 
     # Load training and eval data
-    mnist = learn.datasets.mnist.read_data_sets('MNIST-data-%d' % hvd.rank())
+    mnist = learn.datasets.mnist.read_data_sets('MNIST-data')
     train_data = mnist.train.images  # Returns np.array
     train_labels = np.asarray(mnist.train.labels, dtype=np.int32)
     eval_data = mnist.test.images  # Returns np.array
@@ -177,7 +177,7 @@ def main(unused_argv):
     mnist_classifier.train(
         input_fn=train_input_fn,
         steps=20000 // hvd.size(),
-        hooks=[logging_hook, bcast_hook])
+        hooks=[bcast_hook])
 
     # Evaluate the model and print results
     eval_input_fn = tf.estimator.inputs.numpy_input_fn(
