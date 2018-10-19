@@ -369,9 +369,6 @@ def main(unused_argv):
         model_fn=cnn_model_fn, model_dir=model_dir,
         config=tf.estimator.RunConfig(session_config=config))
 
-
-
-
     # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from
     # rank 0 to all other processes. This is necessary to ensure consistent
     # initialization of all workers when training is started with random weights or
@@ -382,16 +379,13 @@ def main(unused_argv):
         return input_fn(
             is_training=True, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
-            num_epochs=num_epochs,
-            num_gpus=flags_core.get_num_gpus(flags_obj),
-            dtype=flags_core.get_tf_dtype(flags_obj))
+            num_epochs=num_epochs)
 
     def eval_input_fn():
         return input_fn(
             is_training=False, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
-            num_epochs=1,
-            dtype=flags_core.get_tf_dtype(flags_obj))
+            num_epochs=1)
 
     # Horovod: adjust number of steps based on number of GPUs.
     mnist_classifier.train(
@@ -408,11 +402,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', help='', type=str, default='/Users/liupeng/data/plants/test')
-    parser.add_argument('--batch_size', help='', type=int, default=4)
-    parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
-    parser.add_argument('--model_path', help='', type=str, default='')
-    parser.add_argument('--write_image_freq', help='', type=int, default=10)
+    parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
+    parser.add_argument('--batch_size', help='', type=int, default=32)
+
 
     flags_obj = parser.parse_args()
 
