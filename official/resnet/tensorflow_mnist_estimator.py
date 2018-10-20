@@ -26,17 +26,11 @@ import math
 import os
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-from absl import app as absl_app
-from absl import flags
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.misc import distribution_utils
-from official.utils.misc import model_helpers
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -229,14 +223,14 @@ def cnn_model_fn(features, labels, mode):
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-    # Calculate Loss (for both TRAIN and EVAL modes)
-    # Calculate loss, which includes softmax cross entropy and L2 regularization.
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
 
     # Create a tensor named cross_entropy for logging purposes.
     tf.identity(cross_entropy, name='cross_entropy')
     tf.summary.scalar('cross_entropy', cross_entropy)
+    tf.identity(aux_loss, name='aux_loss')
+    tf.summary.scalar('aux_loss', aux_loss)
 
     l2_loss = weight_decay * tf.losses.get_regularization_loss()
     tf.summary.scalar('l2_loss', l2_loss)
@@ -264,14 +258,29 @@ def cnn_model_fn(features, labels, mode):
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         train_op = tf.group(minimize_op, update_ops)
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    else:
+        train_op = None
 
-    # Add evaluation metrics (for EVAL mode)
-    eval_metric_ops = {
-        "accuracy": tf.metrics.accuracy(
-            labels=labels, predictions=predictions["classes"])}
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+                                                    targets=labels,
+                                                    k=5,
+                                                    name='top_5_op'))
+    metrics = {'accuracy': accuracy,
+               'accuracy_top_5': accuracy_top_5}
+
+    # Create a tensor named train_accuracy for logging purposes
+    tf.identity(accuracy[1], name='train_accuracy')
+    tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+    tf.summary.scalar('train_accuracy', accuracy[1])
+    tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+
     return tf.estimator.EstimatorSpec(
-        mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+        mode=mode,
+        predictions=predictions,
+        loss=loss,
+        train_op=train_op,
+        eval_metric_ops=metrics)
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
@@ -328,7 +337,7 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the Estimator
-    mnist_classifier = tf.estimator.Estimator(
+    classifier = tf.estimator.Estimator(
         model_fn=cnn_model_fn, model_dir=model_dir,
         config=tf.estimator.RunConfig(session_config=config))
 
@@ -338,30 +347,55 @@ def main(unused_argv):
     # restored from a checkpoint.
     bcast_hook = hvd.BroadcastGlobalVariablesHook(0)
 
-    def train_input_fn(num_epochs):
+    def input_fn_train(num_epochs):
         return input_fn(
             is_training=True, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
             num_epochs=num_epochs)
 
-    def eval_input_fn():
+    def input_fn_eval():
         return input_fn(
             is_training=False, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    # Horovod: adjust number of steps based on number of GPUs.
+    # # Horovod: adjust number of steps based on number of GPUs.
+    #
+    # num_epochs = 90
+    #
+    # classifier.train(
+    #     input_fn=lambda: input_fn_train(num_epochs),
+    #     steps=2000000000 // hvd.size(),
+    #     hooks=[bcast_hook])
+    #
+    # # Evaluate the model and print results
+    # eval_results = classifier.evaluate(input_fn=input_fn_eval)
+    # print(eval_results)
 
-    num_epochs = 90
+    #############################################################################################
 
-    mnist_classifier.train(
-        input_fn=lambda: train_input_fn(num_epochs),
-        steps=2000000000 // hvd.size(),
-        hooks=[bcast_hook])
+    n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
+    schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
+    schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
-    # Evaluate the model and print results
-    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-    print(eval_results)
+    for cycle_index, num_train_epochs in enumerate(schedule):
+        tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+
+        if num_train_epochs:
+            classifier.train(input_fn=lambda: input_fn_train(num_train_epochs), hooks=[bcast_hook], max_steps=None)
+
+        tf.logging.info('Starting to evaluate.')
+
+        # flags_obj.max_train_steps is generally associated with testing and
+        # profiling. As a result it is frequently called with synthetic data, which
+        # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+        # eval (which is generally unimportant in those circumstances) to terminate.
+        # Note that eval will run for max_train_steps each loop, regardless of the
+        # global_step count.
+
+        if hvd.rank() == 0:
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
+            tf.logging.info(eval_results)
 
 
 if __name__ == "__main__":
@@ -370,6 +404,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
     parser.add_argument('--batch_size', help='', type=int, default=32)
+    parser.add_argument('--train_epochs', help='', type=int, default=90)
+    parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
 
     flags_obj = parser.parse_args()
 
