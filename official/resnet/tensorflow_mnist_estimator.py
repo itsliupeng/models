@@ -236,6 +236,13 @@ def cnn_model_fn(features, labels, mode):
     tf.summary.scalar('l2_loss', l2_loss)
     loss = cross_entropy + aux_loss + l2_loss
 
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
+                                                    targets=labels,
+                                                    k=5,
+                                                    name='top_5_op'))
+    metrics = {'accuracy': accuracy, 'accuracy_top_5': accuracy_top_5}
+
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
 
@@ -254,33 +261,31 @@ def cnn_model_fn(features, labels, mode):
         # minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        tf.logging.info(f'update_ops: {update_ops}')
+
+        # Create a tensor named train_accuracy for logging purposes
+        tf.identity(accuracy[1], name='train_accuracy')
+        tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+        tf.summary.scalar('train_accuracy', accuracy[1])
+        tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+
         with tf.control_dependencies(update_ops):
-            minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
+            # minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
+            grad_vars = optimizer.compute_gradients(loss)
+            minimize_op = optimizer.apply_gradients(grad_vars, global_step)
+            tf.logging.info(f'minimize_op: {minimize_op}')
             train_op = tf.group(minimize_op, update_ops)
 
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
+
     else:
-        train_op = None
+        # Create a tensor named train_accuracy for logging purposes
+        tf.identity(accuracy[1], name='eval_accuracy')
+        tf.identity(accuracy_top_5[1], name='eval_accuracy_top_5')
+        tf.summary.scalar('eval_accuracy', accuracy[1])
+        tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
 
-    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
-                                                    targets=labels,
-                                                    k=5,
-                                                    name='top_5_op'))
-    metrics = {'accuracy': accuracy,
-               'accuracy_top_5': accuracy_top_5}
-
-    # Create a tensor named train_accuracy for logging purposes
-    tf.identity(accuracy[1], name='train_accuracy')
-    tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
-    tf.summary.scalar('train_accuracy', accuracy[1])
-    tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
-
-    return tf.estimator.EstimatorSpec(
-        mode=mode,
-        predictions=predictions,
-        loss=loss,
-        train_op=train_op,
-        eval_metric_ops=metrics)
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
