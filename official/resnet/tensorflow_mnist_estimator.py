@@ -359,7 +359,7 @@ def main(unused_argv):
             num_epochs=1)
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5'}
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=1)
+    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
