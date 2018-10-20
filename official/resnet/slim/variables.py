@@ -86,7 +86,8 @@ import tensorflow as tf
 from official.resnet.slim import scopes
 
 # Collection containing all the variables created using slim.variables
-MODEL_VARIABLES = '_model_variables_'
+# MODEL_VARIABLES = '_model_variables_'
+MODEL_VARIABLES = tf.GraphKeys.MODEL_VARIABLES
 
 # Collection containing the slim.variables that are created with restore=True.
 VARIABLES_TO_RESTORE = '_variables_to_restore_'

@@ -33,7 +33,8 @@ from official.resnet.slim import variables
 from tensorflow.python.training import moving_averages
 
 # Used to keep the update ops done by batch_norm.
-UPDATE_OPS_COLLECTION = '_update_ops_'
+# UPDATE_OPS_COLLECTION = '_update_ops_'
+UPDATE_OPS_COLLECTION = tf.GraphKeys.UPDATE_OPS
 
 
 @scopes.add_arg_scope

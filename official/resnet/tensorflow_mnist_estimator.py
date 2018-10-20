@@ -253,10 +253,10 @@ def cnn_model_fn(features, labels, mode):
         # grad_vars = optimizer.compute_gradients(loss)
         # minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
-        minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
-
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        train_op = tf.group(minimize_op, update_ops)
+        with tf.control_dependencies(update_ops):
+            minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
+            train_op = tf.group(minimize_op, update_ops)
 
     else:
         train_op = None
@@ -359,21 +359,6 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    # # Horovod: adjust number of steps based on number of GPUs.
-    #
-    # num_epochs = 90
-    #
-    # classifier.train(
-    #     input_fn=lambda: input_fn_train(num_epochs),
-    #     steps=2000000000 // hvd.size(),
-    #     hooks=[bcast_hook])
-    #
-    # # Evaluate the model and print results
-    # eval_results = classifier.evaluate(input_fn=input_fn_eval)
-    # print(eval_results)
-
-    #############################################################################################
-
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
@@ -385,13 +370,6 @@ def main(unused_argv):
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs), hooks=[bcast_hook], max_steps=None)
 
         tf.logging.info('Starting to evaluate.')
-
-        # flags_obj.max_train_steps is generally associated with testing and
-        # profiling. As a result it is frequently called with synthetic data, which
-        # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
-        # eval (which is generally unimportant in those circumstances) to terminate.
-        # Note that eval will run for max_train_steps each loop, regardless of the
-        # global_step count.
 
         if hvd.rank() == 0:
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
