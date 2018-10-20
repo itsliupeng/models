@@ -225,73 +225,65 @@ def cnn_model_fn(features, labels, mode):
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
-
-    # Create a tensor named cross_entropy for logging purposes.
-    tf.identity(cross_entropy, name='cross_entropy')
-    tf.summary.scalar('cross_entropy', cross_entropy)
-    tf.identity(aux_loss, name='aux_loss')
-    tf.summary.scalar('aux_loss', aux_loss)
-
     l2_loss = weight_decay * tf.losses.get_regularization_loss()
-    tf.logging.info('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
-
-    tf.summary.scalar('l2_loss', l2_loss)
     loss = cross_entropy + aux_loss + l2_loss
 
+    if hvd.rank() == 0:
+        tf.identity(cross_entropy, name='cross_entropy')
+        tf.summary.scalar('cross_entropy', cross_entropy)
+        tf.identity(aux_loss, name='aux_loss')
+        tf.summary.scalar('aux_loss', aux_loss)
+
+        tf.summary.scalar('l2_loss', l2_loss)
+
+        tf.logging.info('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
+
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits,
-                                                    targets=labels,
-                                                    k=5,
-                                                    name='top_5_op'))
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
     metrics = {'accuracy': accuracy, 'accuracy_top_5': accuracy_top_5}
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-
         global_step = tf.train.get_or_create_global_step()
 
         learning_rate = learning_rate_fn(global_step)
-
-        # Create a tensor named learning_rate for logging purposes
-        tf.identity(learning_rate, name='learning_rate')
-        tf.summary.scalar('learning_rate', learning_rate)
-
         optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate * hvd.size(), momentum=momentum)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
-        # grad_vars = optimizer.compute_gradients(loss)
-        # minimize_op = optimizer.apply_gradients(grad_vars, global_step)
-
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        tf.logging.info('update_ops: {}'.format(update_ops))
-
-        # Create a tensor named train_accuracy for logging purposes
-        tf.identity(accuracy[1], name='train_accuracy')
-        tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
-        tf.summary.scalar('train_accuracy', accuracy[1])
-        tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
-
         with tf.control_dependencies(update_ops):
             # minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
             grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(grad_vars, global_step)
-            tf.logging.info('minimize_op: {}'.format(minimize_op))
-            train_op = tf.group(minimize_op, update_ops)
+
+        train_op = tf.group(minimize_op, update_ops)
+
+        if hvd.rank() == 0:
+            # Create a tensor named learning_rate for logging purposes
+            tf.identity(learning_rate, name='learning_rate')
+            tf.summary.scalar('learning_rate', learning_rate)
+
+            # Create a tensor named train_accuracy for logging purposes
+            tf.identity(accuracy[1], name='train_accuracy')
+            tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+            tf.summary.scalar('train_accuracy', accuracy[1])
+            tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
+
+            tf.logging.info('update_ops: {}'.format(update_ops))
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
 
     else:
-        # Create a tensor named train_accuracy for logging purposes
-        tf.identity(accuracy[1], name='eval_accuracy')
-        tf.identity(accuracy_top_5[1], name='eval_accuracy_top_5')
-        tf.summary.scalar('eval_accuracy', accuracy[1])
-        tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
+        if hvd.rank() == 0:
+            tf.identity(accuracy[1], name='eval_accuracy')
+            tf.identity(accuracy_top_5[1], name='eval_accuracy_top_5')
+            tf.summary.scalar('eval_accuracy', accuracy[1])
+            tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
 
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             dtype=tf.float32):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32):
     """Input function which provides batches for train or eval.
 
     Args:
@@ -366,6 +358,9 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5'}
+    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=1)
+
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
@@ -374,7 +369,8 @@ def main(unused_argv):
         tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
         if num_train_epochs:
-            classifier.train(input_fn=lambda: input_fn_train(num_train_epochs), hooks=[bcast_hook], max_steps=None)
+            classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
+                             hooks=[bcast_hook, logging_hook], max_steps=None)
 
         tf.logging.info('Starting to evaluate.')
 
