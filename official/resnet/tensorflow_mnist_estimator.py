@@ -233,6 +233,8 @@ def cnn_model_fn(features, labels, mode):
     tf.summary.scalar('aux_loss', aux_loss)
 
     l2_loss = weight_decay * tf.losses.get_regularization_loss()
+    tf.logging.info('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
+
     tf.summary.scalar('l2_loss', l2_loss)
     loss = cross_entropy + aux_loss + l2_loss
 
@@ -261,7 +263,7 @@ def cnn_model_fn(features, labels, mode):
         # minimize_op = optimizer.apply_gradients(grad_vars, global_step)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        tf.logging.info(f'update_ops: {update_ops}')
+        tf.logging.info('update_ops: {}'.format(update_ops))
 
         # Create a tensor named train_accuracy for logging purposes
         tf.identity(accuracy[1], name='train_accuracy')
@@ -273,7 +275,7 @@ def cnn_model_fn(features, labels, mode):
             # minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
             grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(grad_vars, global_step)
-            tf.logging.info(f'minimize_op: {minimize_op}')
+            tf.logging.info('minimize_op: {}'.format(minimize_op))
             train_op = tf.group(minimize_op, update_ops)
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
