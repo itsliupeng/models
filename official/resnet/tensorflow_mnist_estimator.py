@@ -369,8 +369,13 @@ def main(unused_argv):
         tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
         if num_train_epochs:
+            if hvd.rank() == 0:
+                train_hooks = [bcast_hook, logging_hook]
+            else:
+                train_hooks = [bcast_hook]
+
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                             hooks=[bcast_hook, logging_hook], max_steps=None)
+                             hooks=train_hooks, max_steps=None)
 
         tf.logging.info('Starting to evaluate.')
 
