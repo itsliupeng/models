@@ -87,15 +87,13 @@ class HorovodEstimator(estimator.Estimator):
                 saver_hooks[0]._listeners.extend(saving_listeners)  # pylint: disable=protected-access
 
         if hvd.rank() == 0:
-            is_chief = True
             log_step_count_steps = self._config.log_step_count_steps
         else:
-            is_chief = False
             log_step_count_steps = None
 
         with training.MonitoredTrainingSession(
                 master=self._config.master,
-                is_chief=is_chief,
+                is_chief=self._config.is_chief,
                 checkpoint_dir=self.model_dir,
                 scaffold=estimator_spec.scaffold,
                 hooks=worker_hooks,
