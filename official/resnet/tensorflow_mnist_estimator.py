@@ -221,7 +221,7 @@ def cnn_model_fn(features, labels, mode, params):
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
     }
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.tf.estimatorSpec(mode=mode, predictions=predictions)
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
@@ -271,7 +271,7 @@ def cnn_model_fn(features, labels, mode, params):
 
             tf.logging.info('update_ops: {}'.format(update_ops))
 
-        return tf.estimator.tf.estimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
 
     else:
         if hvd.rank() == 0:
@@ -280,7 +280,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('eval_accuracy', accuracy[1])
             tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
 
-        return tf.estimator.tf.estimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32):
