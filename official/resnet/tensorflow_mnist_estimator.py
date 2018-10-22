@@ -343,7 +343,7 @@ def main(unused_argv):
     # Create the tf.estimator
     from official.resnet.horovod_estimator import HorovodEstimator
     classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-                                  config=tf.estimator.RunConfig(session_config=config),
+                                  config=tf.estimator.RunConfig(session_config=config, save_checkpoints_steps=300),
                                   params={'learning_rate_fn': learning_rate_fn})
 
     # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from

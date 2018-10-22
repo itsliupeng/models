@@ -85,18 +85,29 @@ class HorovodEstimator(estimator.Estimator):
                 # It is expected to have one CheckpointSaverHook. If multiple, we pick
                 # up the first one to add listener.
                 saver_hooks[0]._listeners.extend(saving_listeners)  # pylint: disable=protected-access
+
+        if hvd.rank() == 0:
+            is_chief = True
+            model_dir = self._model_dir
+            log_step_count_steps = self._config.log_step_count_steps
+            save_summaries_steps = self._config.save_summary_steps
+        else:
+            is_chief = False
+            model_dir = None
+            log_step_count_steps = None
+            save_summaries_steps = None
+
         with training.MonitoredTrainingSession(
                 master=self._config.master,
-                is_chief=self._config.is_chief,
-                checkpoint_dir=self._model_dir,
+                is_chief=is_chief,
+                checkpoint_dir=model_dir,
                 scaffold=estimator_spec.scaffold,
                 hooks=worker_hooks,
-                chief_only_hooks=(
-                        tuple(chief_hooks) + tuple(estimator_spec.training_chief_hooks)),
+                chief_only_hooks=(tuple(chief_hooks) + tuple(estimator_spec.training_chief_hooks)),
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
-                save_summaries_steps=self._config.save_summary_steps,
+                save_summaries_steps=save_summaries_steps,
                 config=self._session_config,
-                log_step_count_steps=self._config.log_step_count_steps) as mon_sess:
+                log_step_count_steps=log_step_count_steps) as mon_sess:
             loss = None
             while not mon_sess.should_stop():
                 _, loss = mon_sess.run([estimator_spec.train_op, estimator_spec.loss])
