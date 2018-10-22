@@ -341,9 +341,10 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the Estimator
-    classifier = tf.estimator.Estimator(
-        model_fn=cnn_model_fn, model_dir=model_dir,
-        config=tf.estimator.RunConfig(session_config=config), params={'learning_rate_fn': learning_rate_fn})
+    from official.resnet.horovod_estimator import HorovodEstimator
+    classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+                                  config=tf.estimator.RunConfig(session_config=config),
+                                  params={'learning_rate_fn': learning_rate_fn})
 
     # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from
     # rank 0 to all other processes. This is necessary to ensure consistent
