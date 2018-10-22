@@ -162,49 +162,6 @@ def parse_record(raw_record, is_training, dtype):
     return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
-             dtype=tf.float32):
-    """Input function which provides batches for train or eval.
-
-    Args:
-      is_training: A boolean denoting whether the input is for training.
-      data_dir: The directory containing the input data.
-      batch_size: The number of samples per batch.
-      num_epochs: The number of epochs to repeat the dataset.
-      num_gpus: The number of gpus used for training.
-      dtype: Data type to use for images/features
-
-    Returns:
-      A dataset that can be used for iteration.
-    """
-    filenames = get_filenames(is_training, data_dir)
-    dataset = tf.data.Dataset.from_tensor_slices(filenames)
-
-    if is_training:
-        # Shuffle the input files
-        dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
-
-    # Convert to individual records.
-    # cycle_length = 10 means 10 files will be read and deserialized in parallel.
-    # This number is low enough to not cause too much contention on small systems
-    # but high enough to provide the benefits of parallelization. You may want
-    # to increase this number if you have a large number of CPU cores.
-    dataset = dataset.apply(tf.contrib.data.parallel_interleave(
-        tf.data.TFRecordDataset, cycle_length=10))
-
-    return resnet_run_loop.process_record_dataset(
-        dataset=dataset,
-        is_training=is_training,
-        batch_size=batch_size,
-        shuffle_buffer=_SHUFFLE_BUFFER,
-        parse_record_fn=parse_record,
-        num_epochs=num_epochs,
-        num_gpus=num_gpus,
-        examples_per_epoch=_NUM_IMAGES['train'] if is_training else None,
-        dtype=dtype
-    )
-
-
 def cnn_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     momentum = 0.9
@@ -283,7 +240,7 @@ def cnn_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0):
     """Input function which provides batches for train or eval.
 
     Args:
@@ -298,7 +255,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
       A dataset that can be used for iteration.
     """
     filenames = get_filenames(is_training, data_dir)
-    dataset = tf.data.Dataset.from_tensor_slices(filenames)
+    dataset = tf.data.Dataset.from_tensor_slices(filenames).shard(num_shards, shard_index)
 
     if is_training:
         # Shuffle the input files
@@ -356,7 +313,7 @@ def main(unused_argv):
         return input_fn(
             is_training=True, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
-            num_epochs=num_epochs)
+            num_epochs=num_epochs, num_shards=hvd.size(), shard_index=hvd.rank())
 
     def input_fn_eval():
         return input_fn(
