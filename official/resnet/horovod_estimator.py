@@ -8,6 +8,7 @@ from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.summary import summary
 from tensorflow.python.training import training
 from tensorflow.python.training import warm_starting_util
+import horovod.tensorflow as hvd
 
 estimator.Estimator._assert_members_are_not_overridden = lambda _: None
 
@@ -36,14 +37,15 @@ class HorovodEstimator(estimator.Estimator):
             training.NanTensorHook(estimator_spec.loss)
         )
         if self._config.log_step_count_steps is not None:
-            worker_hooks.append(
-                training.LoggingTensorHook(
-                    {
-                        'loss': estimator_spec.loss,
-                        'step': global_step_tensor
-                    },
-                    every_n_iter=self._config.log_step_count_steps)
-            )
+            if hvd.rank() == 0:
+                worker_hooks.append(
+                    training.LoggingTensorHook(
+                        {
+                            'loss': estimator_spec.loss,
+                            'step': global_step_tensor
+                        },
+                        every_n_iter=self._config.log_step_count_steps)
+                )
         worker_hooks.extend(estimator_spec.training_hooks)
 
         if not (estimator_spec.scaffold.saver or
