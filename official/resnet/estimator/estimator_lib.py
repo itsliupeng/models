@@ -19,33 +19,33 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=unused-import,line-too-long,wildcard-import
-from tensorflow.python.estimator.canned.baseline import BaselineClassifier
-from tensorflow.python.estimator.canned.baseline import BaselineRegressor
-from tensorflow.python.estimator.canned.boosted_trees import BoostedTreesClassifier
-from tensorflow.python.estimator.canned.boosted_trees import BoostedTreesRegressor
-from tensorflow.python.estimator.canned.dnn import DNNClassifier
-from tensorflow.python.estimator.canned.dnn import DNNRegressor
-from tensorflow.python.estimator.canned.dnn_linear_combined import DNNLinearCombinedClassifier
-from tensorflow.python.estimator.canned.dnn_linear_combined import DNNLinearCombinedRegressor
-from tensorflow.python.estimator.canned.linear import LinearClassifier
-from tensorflow.python.estimator.canned.linear import LinearRegressor
-from tensorflow.python.estimator.canned.parsing_utils import classifier_parse_example_spec
-from tensorflow.python.estimator.canned.parsing_utils import regressor_parse_example_spec
-from tensorflow.python.estimator.estimator import Estimator
-from tensorflow.python.estimator.estimator import VocabInfo
-from tensorflow.python.estimator.estimator import WarmStartSettings
-from tensorflow.python.estimator.export import export_lib as export
-from tensorflow.python.estimator.exporter import Exporter
-from tensorflow.python.estimator.exporter import FinalExporter
-from tensorflow.python.estimator.exporter import LatestExporter
-from tensorflow.python.estimator.inputs import inputs
-from tensorflow.python.estimator.keras import model_to_estimator
-from tensorflow.python.estimator.model_fn import EstimatorSpec
-from tensorflow.python.estimator.model_fn import ModeKeys
-from tensorflow.python.estimator.run_config import RunConfig
-from tensorflow.python.estimator.training import EvalSpec
-from tensorflow.python.estimator.training import train_and_evaluate
-from tensorflow.python.estimator.training import TrainSpec
+from official.resnet.estimator.canned.baseline import BaselineClassifier
+from official.resnet.estimator.canned.baseline import BaselineRegressor
+from official.resnet.estimator.canned.boosted_trees import BoostedTreesClassifier
+from official.resnet.estimator.canned.boosted_trees import BoostedTreesRegressor
+from official.resnet.estimator.canned.dnn import DNNClassifier
+from official.resnet.estimator.canned.dnn import DNNRegressor
+from official.resnet.estimator.canned.dnn_linear_combined import DNNLinearCombinedClassifier
+from official.resnet.estimator.canned.dnn_linear_combined import DNNLinearCombinedRegressor
+from official.resnet.estimator.canned.linear import LinearClassifier
+from official.resnet.estimator.canned.linear import LinearRegressor
+from official.resnet.estimator.canned.parsing_utils import classifier_parse_example_spec
+from official.resnet.estimator.canned.parsing_utils import regressor_parse_example_spec
+from official.resnet.estimator.estimator import Estimator
+from official.resnet.estimator.estimator import VocabInfo
+from official.resnet.estimator.estimator import WarmStartSettings
+from official.resnet.estimator.export import export_lib as export
+from official.resnet.estimator.exporter import Exporter
+from official.resnet.estimator.exporter import FinalExporter
+from official.resnet.estimator.exporter import LatestExporter
+from official.resnet.estimator.inputs import inputs
+from official.resnet.estimator.keras import model_to_estimator
+from official.resnet.estimator.model_fn import EstimatorSpec
+from official.resnet.estimator.model_fn import ModeKeys
+from official.resnet.estimator.run_config import RunConfig
+from official.resnet.estimator.training import EvalSpec
+from official.resnet.estimator.training import train_and_evaluate
+from official.resnet.estimator.training import TrainSpec
 
 
 # pylint: enable=unused-import,line-too-long,wildcard-import
