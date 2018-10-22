@@ -31,6 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
+from official.resnet import estimator
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -210,7 +211,7 @@ def cnn_model_fn(features, labels, mode, params):
     momentum = 0.9
 
     logits, aux_logits = inception_model.inference(features, num_classes=1001,
-                                                   for_training=mode == tf.estimator.ModeKeys.TRAIN,
+                                                   for_training=mode == estimator.ModeKeys.TRAIN,
                                                    restore_logits=False)
 
     predictions = {
@@ -220,8 +221,8 @@ def cnn_model_fn(features, labels, mode, params):
         # `logging_hook`.
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
     }
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+    if mode == estimator.ModeKeys.PREDICT:
+        return estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
@@ -243,7 +244,7 @@ def cnn_model_fn(features, labels, mode, params):
     metrics = {'accuracy': accuracy, 'accuracy_top_5': accuracy_top_5}
 
     # Configure the Training Op (for TRAIN mode)
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode == estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
 
         learning_rate = params['learning_rate_fn'](global_step)
@@ -271,7 +272,7 @@ def cnn_model_fn(features, labels, mode, params):
 
             tf.logging.info('update_ops: {}'.format(update_ops))
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
+        return estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
 
     else:
         if hvd.rank() == 0:
@@ -280,7 +281,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('eval_accuracy', accuracy[1])
             tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
 
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
+        return estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32):
@@ -341,9 +342,8 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the Estimator
-    from official.resnet.horovod_estimator import HorovodEstimator
-    classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-                                  config=tf.estimator.RunConfig(session_config=config),
+    classifier = estimator.Estimator(model_fn=cnn_model_fn, model_dir=model_dir,
+                                  config=estimator.RunConfig(session_config=config),
                                   params={'learning_rate_fn': learning_rate_fn})
 
     # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from
