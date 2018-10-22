@@ -247,7 +247,7 @@ def cnn_model_fn(features, labels, mode):
         global_step = tf.train.get_or_create_global_step()
 
         learning_rate = learning_rate_fn(global_step)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate * hvd.size(), momentum=momentum)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     flags_obj = parser.parse_args()
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-        batch_size=flags_obj.batch_size, batch_denom=256,
+        batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
 
