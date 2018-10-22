@@ -88,24 +88,20 @@ class HorovodEstimator(estimator.Estimator):
 
         if hvd.rank() == 0:
             is_chief = True
-            model_dir = self._model_dir
             log_step_count_steps = self._config.log_step_count_steps
-            save_summaries_steps = self._config.save_summary_steps
         else:
             is_chief = False
-            model_dir = None
             log_step_count_steps = None
-            save_summaries_steps = None
 
         with training.MonitoredTrainingSession(
                 master=self._config.master,
                 is_chief=is_chief,
-                checkpoint_dir=model_dir,
+                checkpoint_dir=self.model_dir,
                 scaffold=estimator_spec.scaffold,
                 hooks=worker_hooks,
                 chief_only_hooks=(tuple(chief_hooks) + tuple(estimator_spec.training_chief_hooks)),
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
-                save_summaries_steps=save_summaries_steps,
+                save_summaries_steps=self._config.save_summary_steps,
                 config=self._session_config,
                 log_step_count_steps=log_step_count_steps) as mon_sess:
             loss = None
