@@ -205,7 +205,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None,
     )
 
 
-def cnn_model_fn(features, labels, mode):
+def cnn_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     momentum = 0.9
 
@@ -246,7 +246,7 @@ def cnn_model_fn(features, labels, mode):
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
 
-        learning_rate = learning_rate_fn(global_step)
+        learning_rate = params['learning_rate_fn'](global_step)
         optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
@@ -333,12 +333,17 @@ def main(unused_argv):
     config.gpu_options.allow_growth = True
     config.gpu_options.visible_device_list = str(hvd.local_rank())
 
+    learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
+        batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
+        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
+
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the Estimator
     classifier = tf.estimator.Estimator(
         model_fn=cnn_model_fn, model_dir=model_dir,
-        config=tf.estimator.RunConfig(session_config=config))
+        config=tf.estimator.RunConfig(session_config=config), params={'learning_rate_fn': learning_rate_fn})
 
     # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from
     # rank 0 to all other processes. This is necessary to ensure consistent
@@ -394,11 +399,5 @@ if __name__ == "__main__":
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
 
     flags_obj = parser.parse_args()
-
-    learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-        batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
-
 
     tf.app.run()
