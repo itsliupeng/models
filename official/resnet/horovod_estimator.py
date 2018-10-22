@@ -2,57 +2,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-import copy
-import os
-import tempfile
-
-import numpy as np
-import six
-
-
 from tensorflow import estimator
-from google.protobuf import message
-from tensorflow.core.framework import summary_pb2
-from tensorflow.python.client import session as tf_session
-from tensorflow.python.eager import context
-from tensorflow.python.estimator import model_fn as model_fn_lib
-from tensorflow.python.estimator import run_config
-from tensorflow.python.estimator import util as estimator_util
-from tensorflow.python.estimator.export import export as export_helpers
-from tensorflow.python.framework import constant_op
-from tensorflow.python.framework import dtypes
-from tensorflow.python.framework import errors
 from tensorflow.python.framework import ops
-from tensorflow.python.framework import random_seed
-from tensorflow.python.framework import tensor_util
-from tensorflow.python.keras import metrics
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import metrics as metrics_lib
-from tensorflow.python.ops import resources
-from tensorflow.python.ops import variables
-from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
-from tensorflow.python.saved_model import builder as saved_model_builder
-from tensorflow.python.saved_model import utils_impl as saved_model_utils
 from tensorflow.python.summary import summary
-from tensorflow.python.summary.writer import writer_cache
-from tensorflow.python.training import basic_session_run_hooks
-from tensorflow.python.training import checkpoint_management
-from tensorflow.python.training import device_setter
-from tensorflow.python.training import distribute as distribute_lib
-from tensorflow.python.training import evaluation
-from tensorflow.python.training import monitored_session
-from tensorflow.python.training import saver
 from tensorflow.python.training import training
-from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
-from tensorflow.python.util import compat
-from tensorflow.python.util import compat_internal
-from tensorflow.python.util import function_utils
-from tensorflow.python.util import nest
-from tensorflow.python.util.tf_export import estimator_export
 
 
 class HorovodEstimator(estimator.Estimator):
