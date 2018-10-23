@@ -210,8 +210,8 @@ def cnn_model_fn(features, labels, mode, params):
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             # minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
-            grad_vars = optimizer.compute_gradients(loss)
-            minimize_op = optimizer.apply_gradients(grad_vars, global_step)
+            avg_grad_vars = optimizer.compute_gradients(loss)
+            minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
         train_op = tf.group(minimize_op, update_ops)
 
@@ -312,7 +312,7 @@ def main(unused_argv):
     def input_fn_train(num_epochs):
         return input_fn(
             is_training=True, data_dir=flags_obj.data_dir,
-            batch_size=flags_obj.batch_size,
+            batch_size=flags_obj.batch_size * hvd.size(),
             num_epochs=num_epochs, num_shards=hvd.size(), shard_index=hvd.rank())
 
     def input_fn_eval():
