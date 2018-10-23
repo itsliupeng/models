@@ -12,8 +12,7 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
-from tensorflow.python.training.monitored_session import USE_DEFAULT
-from tensorflow.train import Scaffold, MonitoredSession, ChiefSessionCreator
+from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 
 import horovod.tensorflow as hvd
 
