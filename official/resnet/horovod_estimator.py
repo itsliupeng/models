@@ -13,6 +13,7 @@ from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
+import tensorflow as tf
 
 import horovod.tensorflow as hvd
 
@@ -96,7 +97,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    print('lp: rank {}, all hooks {}, hooks {}, chief_only_hooks {} checkpoint_dir {}'.format(hvd.rank(), all_hooks, hooks, chief_only_hooks, checkpoint_dir))
+    tf.logging.info('lp: rank {}, all hooks {}, hooks {}, chief_only_hooks {} checkpoint_dir {}'.format(hvd.rank(), all_hooks, hooks, chief_only_hooks, checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
