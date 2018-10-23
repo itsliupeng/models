@@ -354,7 +354,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
     parser.add_argument('--batch_size', help='', type=int, default=32)
     parser.add_argument('--train_epochs', help='', type=int, default=90)
-    parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
+    parser.add_argument('--epochs_between_evals', help='', type=int, default=10)
 
     flags_obj = parser.parse_args()
 
