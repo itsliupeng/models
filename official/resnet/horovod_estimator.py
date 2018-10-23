@@ -58,7 +58,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     scaffold = scaffold or Scaffold()
 
     all_hooks = []
-    if chief_only_hooks:
+    if is_chief and chief_only_hooks:
         all_hooks.extend(chief_only_hooks)
 
     # lp-to-do: restore from checkpoint, should br rank 0 variables

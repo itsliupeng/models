@@ -31,6 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
+import socket
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -285,6 +286,7 @@ def main(unused_argv):
     # Horovod: initialize Horovod.
     hvd.init()
 
+    tf.logging.info('lp-debug: host {}  rank {} / {}'.format(socket.gethostname(), hvd.rank(), hvd.size()))
     # Horovod: pin GPU to be used to process local rank (one GPU per process)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
