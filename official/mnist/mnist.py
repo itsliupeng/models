@@ -166,8 +166,7 @@ def run_mnist(flags_obj):
     distribution_strategy = distribution_utils.get_distribution_strategy(
         flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
 
-    run_config = tf.estimator.RunConfig(
-        train_distribute=distribution_strategy, session_config=session_config)
+    run_config = tf.estimator.RunConfig()
 
     data_format = flags_obj.data_format
     if data_format is None:
