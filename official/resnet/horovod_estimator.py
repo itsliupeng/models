@@ -19,7 +19,7 @@ import horovod.tensorflow as hvd
 estimator.Estimator._assert_members_are_not_overridden = lambda _: None
 
 
-def is_chief():
+def is_rank0():
     return hvd.rank() == 0
 
 
@@ -59,6 +59,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     all_hooks = []
     if chief_only_hooks:
         all_hooks.extend(chief_only_hooks)
+
+    # lp-to-do: restore from checkpoint, should br rank 0 variables
     session_creator = ChiefSessionCreator(
         scaffold=scaffold,
         checkpoint_dir=checkpoint_dir,
@@ -66,7 +68,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
         config=config)
 
     summary_dir = summary_dir or checkpoint_dir
-    if summary_dir:
+    if is_rank0() and summary_dir:
         if log_step_count_steps and log_step_count_steps > 0:
             all_hooks.append(
                 basic_session_run_hooks.StepCounterHook(
@@ -81,7 +83,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                     save_secs=save_summaries_secs,
                     output_dir=summary_dir))
 
-    if checkpoint_dir:
+    if is_rank0() and checkpoint_dir:
+
         if (save_checkpoint_secs and save_checkpoint_secs > 0) or (
                 save_checkpoint_steps and save_checkpoint_steps > 0):
             all_hooks.append(
@@ -94,7 +97,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    print('lp: rank {}, all hooks {}, hooks {}, checkpoint_dir {}'.format(hvd.rank(), all_hooks, hooks, checkpoint_dir))
+    print('lp: rank {}, all hooks {}, hooks {}, chief_only_hooks {} checkpoint_dir {}'.format(hvd.rank(), all_hooks, hooks, chief_only_hooks, checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
@@ -160,7 +163,7 @@ class HorovodEstimator(estimator.Estimator):
             training.NanTensorHook(estimator_spec.loss)
         )
         if self._config.log_step_count_steps is not None:
-            if is_chief():
+            if is_rank0():
                 worker_hooks.append(
                     training.LoggingTensorHook(
                         {
@@ -209,7 +212,7 @@ class HorovodEstimator(estimator.Estimator):
                 # up the first one to add listener.
                 saver_hooks[0]._listeners.extend(saving_listeners)  # pylint: disable=protected-access
 
-        if is_chief():
+        if is_rank0():
             log_step_count_steps = self._config.log_step_count_steps
             checkpoint_dir = self.model_dir
         else:
@@ -218,7 +221,7 @@ class HorovodEstimator(estimator.Estimator):
 
         with MonitoredTrainingSession(
                 master=self._config.master,
-                is_chief=is_chief(),
+                is_chief=is_rank0(),
                 checkpoint_dir=checkpoint_dir,
                 scaffold=estimator_spec.scaffold,
                 hooks=worker_hooks,
