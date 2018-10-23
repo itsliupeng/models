@@ -68,7 +68,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
         config=config)
 
     summary_dir = summary_dir or checkpoint_dir
-    if is_rank0() and summary_dir:
+    if summary_dir:
         if log_step_count_steps and log_step_count_steps > 0:
             all_hooks.append(
                 basic_session_run_hooks.StepCounterHook(
@@ -83,8 +83,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                     save_secs=save_summaries_secs,
                     output_dir=summary_dir))
 
-    if is_rank0() and checkpoint_dir:
-
+    if checkpoint_dir:
         if (save_checkpoint_secs and save_checkpoint_secs > 0) or (
                 save_checkpoint_steps and save_checkpoint_steps > 0):
             all_hooks.append(
@@ -215,9 +214,11 @@ class HorovodEstimator(estimator.Estimator):
         if is_rank0():
             log_step_count_steps = self._config.log_step_count_steps
             checkpoint_dir = self.model_dir
+            chief_only_hooks = (tuple(chief_hooks) + tuple(estimator_spec.training_chief_hooks))
         else:
             log_step_count_steps = None
             checkpoint_dir = None
+            chief_only_hooks = None
 
         with MonitoredTrainingSession(
                 master=self._config.master,
@@ -225,7 +226,7 @@ class HorovodEstimator(estimator.Estimator):
                 checkpoint_dir=checkpoint_dir,
                 scaffold=estimator_spec.scaffold,
                 hooks=worker_hooks,
-                chief_only_hooks=(tuple(chief_hooks) + tuple(estimator_spec.training_chief_hooks)),
+                chief_only_hooks=chief_only_hooks,
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
                 save_summaries_steps=self._config.save_summary_steps,
                 config=self._session_config,
