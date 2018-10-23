@@ -312,7 +312,7 @@ def main(unused_argv):
     def input_fn_train(num_epochs):
         return input_fn(
             is_training=True, data_dir=flags_obj.data_dir,
-            batch_size=flags_obj.batch_size * hvd.size(),
+            batch_size=flags_obj.batch_size,
             num_epochs=num_epochs, num_shards=hvd.size(), shard_index=hvd.rank())
 
     def input_fn_eval():
