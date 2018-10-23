@@ -93,6 +93,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
 
     if hooks:
         all_hooks.extend(hooks)
+
+    print('lp: srank {} all hooks {}'.format(hvd.rank(), all_hooks))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
