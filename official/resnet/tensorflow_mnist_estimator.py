@@ -216,9 +216,15 @@ def cnn_model_fn(features, labels, mode, params):
 
         train_op = tf.group(minimize_op, update_ops)
 
+        loss_sum = tf.identity(loss, name='loss_sum')
+
+        loss_avg = hvd.allreduce(loss_sum)
+
+        loss_avg = tf.identity(loss_avg, 'loss_avg')
+
         if hvd.rank() == 0:
-            loss_sum = tf.identity(hvd.allgather(loss), name='loss_sum')
-            tf.logging.info('loss_sum shape {}'.format(loss_sum.shape))
+
+            tf.logging.info('loss_sum shape {}'.format(loss_avg.shape))
 
             # Create a tensor named learning_rate for logging purposes
             tf.identity(learning_rate, name='learning_rate')
@@ -327,7 +333,7 @@ def main(unused_argv):
             num_epochs=1)
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate',
-                      'loss_sum': 'loss_sum'}
+                      'loss_avg': 'loss_avg'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
