@@ -287,7 +287,6 @@ def main(unused_argv):
     # Horovod: initialize Horovod.
     hvd.init()
 
-    tf.logging.info('lp-debug: host {}  rank {} / {}'.format(socket.gethostname(), hvd.rank(), hvd.size()))
     # Horovod: pin GPU to be used to process local rank (one GPU per process)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
