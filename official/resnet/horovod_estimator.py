@@ -30,6 +30,11 @@ def lp_debug(msg):
     head = 'lp-debug rank{}/{} in {}: '.format(hvd.rank(), hvd.size(), socket.gethostname())
     tf.logging.info('{}: {}'.format(head, msg))
 
+def lp_debug_rank0(msg):
+    if is_rank0():
+        head = 'lp-debug only rank{}/{} in {}: '.format(hvd.rank(), hvd.size(), socket.gethostname())
+        tf.logging.info('{}: {}'.format(head, msg))
+
 
 class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
     """
@@ -103,7 +108,7 @@ class AllReduceMetricsHook(tf.train.SessionRunHook):
         lp_debug('loss {}'.format(loss))
         # avg_op = hvd.allreduce(tf.constant(loss))
         loss_avg = run_context.session.run(self.avg_op)
-        lp_debug('loss_avg {}'.format(loss_avg))
+        lp_debug_rank0('loss_avg {}'.format(loss_avg))
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
