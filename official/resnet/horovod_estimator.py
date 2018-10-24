@@ -13,6 +13,7 @@ from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
+from tensorflow.python.training.session_run_hook import SessionRunArgs
 import tensorflow as tf
 import socket
 
@@ -67,25 +68,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
 
 
 class BroadcastBatchNormHook(tf.train.SessionRunHook):
-    """
-    SessionRunHook that will broadcast all global variables from root rank
-    to all other processes during initialization.
-
-    This is necessary to ensure consistent initialization of all workers when
-    training is started with random weights or restored from a checkpoint.
-    """
-
     def __init__(self, root_rank, device=''):
-        """Construct a new BroadcastGlobalVariablesHook that will broadcast all
-        global variables from root rank to all other processes during initialization.
-
-        Args:
-          root_rank:
-            Rank that will send data, other ranks will receive data.
-          device:
-            Device to be used for broadcasting. Uses GPU by default
-            if Horovod was build with HOROVOD_GPU_BROADCAST.
-        """
         super(BroadcastBatchNormHook, self).__init__()
         self.root_rank = root_rank
         self.bcast_op = None
@@ -102,6 +85,30 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
         lp_debug('br begin')
         session.run(self.bcast_op)
         lp_debug('br end')
+
+
+class AllReduceMetricsHook(tf.train.SessionRunHook):
+    def __init__(self, loss_tensor):
+        """Initializes a `NanTensorHook`.
+
+        Args:
+          loss_tensor: `Tensor`, the loss tensor.
+          fail_on_nan_loss: `bool`, whether to raise exception when loss is NaN.
+        """
+        self._loss_tensor = loss_tensor
+
+    def before_run(self, run_context):  # pylint: disable=unused-argument
+        return SessionRunArgs(self._loss_tensor)
+
+    def after_run(self, run_context, run_values):
+        loss = run_values.results
+        lp_debug('loss {}'.format(loss))
+        avg_op = hvd.allreduce(tf.constant(loss))
+        loss_avg = run_context.session.run(self._global_step_tensor)
+        lp_debug('loss_avg {}'.format(loss_avg))
+
+
+
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
@@ -208,7 +215,7 @@ class HorovodEstimator(estimator.Estimator):
         """
 
         # lp: add br hook
-        worker_hooks = [BroadcastGlobalVariablesHook(0)]
+        worker_hooks = []
         with ops.Graph().as_default() as g, g.device(self._device_fn):
             random_seed.set_random_seed(self._config.tf_random_seed)
             global_step_tensor = self._create_and_assert_global_step(g)
@@ -242,6 +249,9 @@ class HorovodEstimator(estimator.Estimator):
         ops.add_to_collection(ops.GraphKeys.LOSSES, estimator_spec.loss)
         worker_hooks.extend(hooks)
         worker_hooks.append(
+            BroadcastGlobalVariablesHook(0),
+            # lp: loss hook
+            AllReduceMetricsHook(estimator_spec.loss),
             training.NanTensorHook(estimator_spec.loss)
         )
         if self._config.log_step_count_steps is not None:

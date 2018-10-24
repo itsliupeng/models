@@ -31,7 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, AllReduceMetricsHook
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -256,10 +256,8 @@ def cnn_model_fn(features, labels, mode, params):
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
-            loss_tower = tf.identity(loss, 'tower_loss')
-            loss_avg = tf.identity(hvd.allreduce(loss_tower), 'loss_avg')
 
-        train_op = tf.group(minimize_op, update_ops, loss_avg)
+        train_op = tf.group(minimize_op, update_ops)
 
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
@@ -326,7 +324,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss_avg': 'loss_avg'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
