@@ -236,7 +236,7 @@ def cnn_model_fn(features, labels, mode, params):
 
         tf.summary.scalar('l2_loss', l2_loss)
 
-        tf.logging.info('REGULARIZATION_LOSSES size: {}'.format(len(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))))
+        lp_debug('REGULARIZATION_LOSSES size: {}'.format(len(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -334,12 +334,7 @@ def main(unused_argv):
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
     for cycle_index, num_train_epochs in enumerate(schedule):
-        lp_debug('Starting cycle: %d/%d', cycle_index, int(n_loops))
-
-        if hvd.rank() == 0:
-            lp_debug('Starting to evaluate before train')
-            eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
-            lp_debug(eval_results)
+        lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
         if num_train_epochs:
             if hvd.rank() == 0:
