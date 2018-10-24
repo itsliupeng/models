@@ -75,7 +75,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
         tf.contrib.data.map_and_batch(
             lambda value: parse_record_fn(value, is_training, dtype),
             batch_size=batch_size,
-            num_parallel_calls=1,
+            # num_parallel_calls=1,
             drop_remainder=False))
 
     # Operations between the final prefetch and the get_next call to the iterator
