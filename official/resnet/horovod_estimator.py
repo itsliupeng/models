@@ -24,6 +24,46 @@ def is_rank0():
     return hvd.rank() == 0
 
 
+def lp_debug(msg):
+    tf.logging.info('lp-debug: ' + msg)
+
+
+class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
+    """
+    SessionRunHook that will broadcast all global variables from root rank
+    to all other processes during initialization.
+
+    This is necessary to ensure consistent initialization of all workers when
+    training is started with random weights or restored from a checkpoint.
+    """
+
+    def __init__(self, root_rank, device=''):
+        """Construct a new BroadcastGlobalVariablesHook that will broadcast all
+        global variables from root rank to all other processes during initialization.
+
+        Args:
+          root_rank:
+            Rank that will send data, other ranks will receive data.
+          device:
+            Device to be used for broadcasting. Uses GPU by default
+            if Horovod was build with HOROVOD_GPU_BROADCAST.
+        """
+        super(BroadcastGlobalVariablesHook, self).__init__()
+        self.root_rank = root_rank
+        self.bcast_op = None
+        self.device = device
+
+    def begin(self):
+        if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
+            with tf.device(self.device):
+                self.bcast_op = hvd.broadcast_global_variables(self.root_rank)
+
+    def after_create_session(self, session, coord):
+        lp_debug('br begin')
+        session.run(self.bcast_op)
+        lp_debug('br end')
+
+
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,
                              checkpoint_dir=None,
@@ -126,7 +166,7 @@ class HorovodEstimator(estimator.Estimator):
         Returns:
           Loss from training
         """
-        worker_hooks = []
+        worker_hooks = [BroadcastGlobalVariablesHook(0)]
         with ops.Graph().as_default() as g, g.device(self._device_fn):
             random_seed.set_random_seed(self._config.tf_random_seed)
             global_step_tensor = self._create_and_assert_global_step(g)
