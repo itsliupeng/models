@@ -315,7 +315,7 @@ class HorovodEstimator(estimator.Estimator):
         worker_hooks.extend([
             BroadcastGlobalVariablesHook(0),
             # lp: loss hook
-            AllReduceTensorHook(estimator_spec.loss, every_n_iter=100),
+            AllReduceTensorHook({'avg_loss': estimator_spec.loss}, every_n_iter=100),
             training.NanTensorHook(estimator_spec.loss)
         ])
         if self._config.log_step_count_steps is not None:
