@@ -64,6 +64,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         session.run(self.bcast_op)
         lp_debug('br end')
 
+
 class BroadcastBatchNormHook(tf.train.SessionRunHook):
     """
     SessionRunHook that will broadcast all global variables from root rank
@@ -175,7 +176,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    tf.logging.info('lp: rank {}, all hooks {}, hooks {}, chief_only_hooks {} checkpoint_dir {}'.format(hvd.rank(), all_hooks, hooks, chief_only_hooks, checkpoint_dir))
+    lp_debug('all hooks {}, hooks {}, chief_only_hooks {} checkpoint_dir {}'.format(all_hooks, hooks, chief_only_hooks, checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,

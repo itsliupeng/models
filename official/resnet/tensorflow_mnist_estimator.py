@@ -31,7 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-import socket
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -301,7 +301,6 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the tf.estimator
-    from official.resnet.horovod_estimator import HorovodEstimator
     classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
@@ -334,6 +333,11 @@ def main(unused_argv):
     for cycle_index, num_train_epochs in enumerate(schedule):
         tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
+        lp_debug('Starting to evaluate.')
+        if hvd.rank() == 0:
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
+            lp_debug(eval_results)
+
         if num_train_epochs:
             if hvd.rank() == 0:
                 train_hooks = [logging_hook]
@@ -343,11 +347,10 @@ def main(unused_argv):
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, max_steps=None)
 
-        tf.logging.info('Starting to evaluate.')
-
+        lp_debug('Starting to evaluate.')
         if hvd.rank() == 0:
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
-            tf.logging.info(eval_results)
+            lp_debug(eval_results)
 
 
 if __name__ == "__main__":
