@@ -240,7 +240,6 @@ def cnn_model_fn(features, labels, mode, params):
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
-    metrics = {'accuracy': accuracy, 'accuracy_top_5': accuracy_top_5}
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -271,7 +270,7 @@ def cnn_model_fn(features, labels, mode, params):
 
             tf.logging.info('update_ops size : {}'.format(len(update_ops)))
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=metrics)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     else:
         if hvd.rank() == 0:
@@ -280,6 +279,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('eval_accuracy', accuracy[1])
             tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
 
+        metrics = {'val_accuracy': accuracy, 'val_accuracy_top_5': accuracy_top_5}
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
 
