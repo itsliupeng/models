@@ -89,13 +89,11 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 class AllReduceMetricsHook(tf.train.SessionRunHook):
     def __init__(self, loss_tensor):
-        """Initializes a `NanTensorHook`.
-
-        Args:
-          loss_tensor: `Tensor`, the loss tensor.
-          fail_on_nan_loss: `bool`, whether to raise exception when loss is NaN.
-        """
         self._loss_tensor = loss_tensor
+
+
+    def begin(self):
+        self.avg_op = hvd.allreduce(tf.identity(self._loss_tensor, 'tower_loss'))
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
         return SessionRunArgs(self._loss_tensor)
@@ -103,8 +101,8 @@ class AllReduceMetricsHook(tf.train.SessionRunHook):
     def after_run(self, run_context, run_values):
         loss = run_values.results
         lp_debug('loss {}'.format(loss))
-        avg_op = hvd.allreduce(tf.constant(loss))
-        loss_avg = run_context.session.run(self._global_step_tensor)
+        # avg_op = hvd.allreduce(tf.constant(loss))
+        loss_avg = run_context.session.run(self.avg_op)
         lp_debug('loss_avg {}'.format(loss_avg))
 
 
