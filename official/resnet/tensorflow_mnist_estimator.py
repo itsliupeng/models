@@ -30,8 +30,9 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug
 from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, AllReduceTensorHook
+from tensorflow.python.training.basic_session_run_hooks import LoggingTensorHook
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -214,10 +215,7 @@ def cnn_model_fn(features, labels, mode, params):
                                                    restore_logits=False)
 
     predictions = {
-        # Generate predictions (for PREDICT and EVAL mode)
         "classes": tf.argmax(input=logits, axis=1),
-        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-        # `logging_hook`.
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
     }
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -228,49 +226,50 @@ def cnn_model_fn(features, labels, mode, params):
     l2_loss = weight_decay * tf.losses.get_regularization_loss()
     loss = cross_entropy + aux_loss + l2_loss
 
-    if hvd.rank() == 0:
-        tf.identity(cross_entropy, name='cross_entropy')
-        tf.summary.scalar('cross_entropy', cross_entropy)
-        tf.identity(aux_loss, name='aux_loss')
-        tf.summary.scalar('aux_loss', aux_loss)
+    tf.identity(cross_entropy, name='cross_entropy')
+    tf.identity(aux_loss, name='aux_loss')
+    tf.identity(aux_loss, name='l2_loss')
+    tf.identity(aux_loss, name='loss')
 
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
+
+    if hvd.rank() == 0:
+        tf.summary.scalar('cross_entropy', cross_entropy)
+        tf.summary.scalar('aux_loss', aux_loss)
         tf.summary.scalar('l2_loss', l2_loss)
 
         lp_debug('REGULARIZATION_LOSSES size: {}'.format(len(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))))
 
-    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
 
-        learning_rate = params['learning_rate_fn'](global_step)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum)
+        lr = params['learning_rate_fn'](global_step)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=momentum)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-
             # lp: do reduce
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
+            loss_avp_op = hvd.allreduce(loss)
 
+        train_op = tf.group(minimize_op, update_ops, loss_avp_op)
 
-        train_op = tf.group(minimize_op, update_ops)
+        tf.identity(lr, name='lr')
+        tf.identity(loss_avp_op, name='loss_avg')
+        tf.identity(accuracy[1], name='train_accuracy')
+        tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
 
         if hvd.rank() == 0:
-            # Create a tensor named learning_rate for logging purposes
-            tf.identity(learning_rate, name='learning_rate')
-            tf.summary.scalar('learning_rate', learning_rate)
-
-            # Create a tensor named train_accuracy for logging purposes
-            tf.identity(accuracy[1], name='train_accuracy')
-            tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+            tf.summary.scalar('lr', lr)
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
-            tf.logging.info('update_ops size : {}'.format(len(update_ops)))
+        lp_debug('update_ops size : {}'.format(len(update_ops)))
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
@@ -324,8 +323,8 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate'}
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
+    tensors_to_log = {'loss_avg': 'loss_avg', 'lr': 'lr', 'top1': 'train_accuracy', 'top5': 'train_accuracy_top_5'}
+    logging_hook = LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]

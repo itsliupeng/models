@@ -2,6 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import socket
+
+import numpy as np
+import tensorflow as tf
 from tensorflow import estimator
 from tensorflow.python.estimator import model_fn as model_fn_lib
 from tensorflow.python.framework import ops
@@ -12,12 +16,9 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
+from tensorflow.python.training.basic_session_run_hooks import NeverTriggerTimer, SecondOrStepTimer
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
-from tensorflow.python.training.basic_session_run_hooks import NeverTriggerTimer, SecondOrStepTimer
-import tensorflow as tf
-import socket
-import numpy as np
 
 import horovod.tensorflow as hvd
 
@@ -92,6 +93,33 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
         lp_debug('br begin')
         session.run(self.bcast_op)
         lp_debug('br end')
+
+
+class LoggingAllReduceTensorHook(basic_session_run_hooks.LoggingTensorHook):
+    def __init__(self, tensors, every_n_iter=None, every_n_secs=None, at_end=False, formatter=None, rank=0):
+        super(LoggingAllReduceTensorHook, self).__init__(tensors, every_n_iter, every_n_secs, at_end, formatter)
+        self.rank = rank
+
+    def begin(self):
+        self._timer.reset()
+        self._iter_count = 0
+        # Convert names to tensors if given
+        self._current_tensors = {tag: hvd.allreduce(tf.identity(
+            basic_session_run_hooks._as_graph_element(tensor),'tower_{}'.format(tag)))
+            for (tag, tensor) in self._tensors.items()}
+
+    def after_run(self, run_context, run_values):
+        if hvd.rank() == self.rank:
+            _ = run_context
+            if self._should_trigger:
+                self._log_tensors(run_values.results)
+
+            self._iter_count += 1
+
+    def end(self, session):
+        if hvd.rank() == self.rank and self._log_at_end:
+            values = session.run(self._current_tensors)
+            self._log_tensors(values)
 
 
 class AllReduceTensorHook(tf.train.SessionRunHook):
@@ -315,8 +343,6 @@ class HorovodEstimator(estimator.Estimator):
         worker_hooks.extend(hooks)
         worker_hooks.extend([
             BroadcastGlobalVariablesHook(0),
-            # lp: loss hook
-            AllReduceTensorHook({'avg_loss': estimator_spec.loss}, every_n_iter=100),
             training.NanTensorHook(estimator_spec.loss)
         ])
         if self._config.log_step_count_steps is not None:
