@@ -122,7 +122,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         self._timer.reset()
         self._iter_count = 0
         # Convert names to tensors if given
-        self._current_tensors = {tag: hvd.allreduce(tf.identity(tensor, '_tower_{}'.format(tag)))
+        self._current_tensors = {tag: hvd.allreduce(tf.identity(tensor, 'tower_{}'.format(tag)))
                                  for (tag, tensor) in self._tensors.items()}
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
