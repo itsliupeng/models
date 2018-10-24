@@ -108,9 +108,6 @@ class AllReduceMetricsHook(tf.train.SessionRunHook):
         lp_debug('loss_avg {}'.format(loss_avg))
 
 
-
-
-
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,
                              checkpoint_dir=None,
@@ -248,12 +245,12 @@ class HorovodEstimator(estimator.Estimator):
             summary.scalar('loss', estimator_spec.loss)
         ops.add_to_collection(ops.GraphKeys.LOSSES, estimator_spec.loss)
         worker_hooks.extend(hooks)
-        worker_hooks.append(
+        worker_hooks.extend([
             BroadcastGlobalVariablesHook(0),
             # lp: loss hook
             AllReduceMetricsHook(estimator_spec.loss),
             training.NanTensorHook(estimator_spec.loss)
-        )
+        ])
         if self._config.log_step_count_steps is not None:
             if is_rank0():
                 worker_hooks.append(
