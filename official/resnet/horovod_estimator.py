@@ -26,7 +26,8 @@ def is_rank0():
 
 
 def lp_debug(msg):
-    tf.logging.info('lp-debug-rank{}/{}_{}: '.format(hvd.rank(), hvd.size(), socket.gethostname()) + msg)
+    head = 'lp-debug rank{}/{} in {}: '.format(hvd.rank(), hvd.size(), socket.gethostname())
+    tf.logging.info('{}: {}'.format(head, msg))
 
 
 class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
