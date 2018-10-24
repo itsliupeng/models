@@ -251,11 +251,15 @@ def cnn_model_fn(features, labels, mode, params):
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            # minimize_op = optimizer.minimize(loss=loss, global_step=global_step)
+
+            # lp: do reduce
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
-        train_op = tf.group(minimize_op, update_ops)
+            loss_tower = tf.identity(loss, 'tower_loss')
+            loss_avg = tf.identity(hvd.allreduce(loss_tower), 'loss_avg')
+
+        train_op = tf.group(minimize_op, update_ops, loss_avg)
 
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
@@ -322,7 +326,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss_avg': 'loss_avg'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
@@ -330,7 +334,7 @@ def main(unused_argv):
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
 
     for cycle_index, num_train_epochs in enumerate(schedule):
-        tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
+        lp_debug('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
         if hvd.rank() == 0:
             lp_debug('Starting to evaluate before train')
