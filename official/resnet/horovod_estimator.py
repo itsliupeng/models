@@ -95,7 +95,7 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(tf.train.SessionRunHook):
-    def __init__(self, tensors, every_n_iter=None, every_n_secs=None, at_end=False, formatter=None):
+    def __init__(self, tensors, every_n_iter=None, every_n_secs=None, at_end=False, formatter=None, rank=0):
         self._loss_tensor = tensors
         only_log_at_end = (
                 at_end and (every_n_iter is None) and (every_n_secs is None))
@@ -117,6 +117,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
             NeverTriggerTimer() if only_log_at_end else
             SecondOrStepTimer(every_secs=every_n_secs, every_steps=every_n_iter))
         self._log_at_end = at_end
+        self.rank = rank
 
     def begin(self):
         self._timer.reset()
@@ -150,7 +151,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
 
     def after_run(self, run_context, run_values):
         _ = run_context
-        if self._should_trigger:
+        if self._should_trigger and hvd.rank() == self.rank:
             self._log_tensors(run_values.results)
 
         self._iter_count += 1
