@@ -332,7 +332,7 @@ def main(unused_argv):
     for cycle_index, num_train_epochs in enumerate(schedule):
         tf.logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
-        lp_debug('Starting to evaluate.')
+        lp_debug('Starting to evaluate before train')
         if hvd.rank() == 0:
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
             lp_debug(eval_results)
@@ -344,9 +344,9 @@ def main(unused_argv):
                 train_hooks = []
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                             hooks=train_hooks, max_steps=None)
+                             hooks=train_hooks, steps=500, max_steps=None)
 
-        lp_debug('Starting to evaluate.')
+        lp_debug('Starting to evaluate after train')
         if hvd.rank() == 0:
             eval_results = classifier.evaluate(input_fn=input_fn_eval, steps=None)
             lp_debug(eval_results)
