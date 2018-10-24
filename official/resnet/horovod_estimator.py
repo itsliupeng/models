@@ -14,6 +14,7 @@ from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 import tensorflow as tf
+import socket
 
 import horovod.tensorflow as hvd
 
@@ -25,7 +26,7 @@ def is_rank0():
 
 
 def lp_debug(msg):
-    tf.logging.info('lp-debug: ' + msg)
+    tf.logging.info('lp-debug-rank{}/{}_{}: '.format(hvd.rank(), hvd.size(), socket.gethostname()) + msg)
 
 
 class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
@@ -57,6 +58,43 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
             with tf.device(self.device):
                 self.bcast_op = hvd.broadcast_global_variables(self.root_rank)
+
+    def after_create_session(self, session, coord):
+        lp_debug('br begin')
+        session.run(self.bcast_op)
+        lp_debug('br end')
+
+class BroadcastBatchNormHook(tf.train.SessionRunHook):
+    """
+    SessionRunHook that will broadcast all global variables from root rank
+    to all other processes during initialization.
+
+    This is necessary to ensure consistent initialization of all workers when
+    training is started with random weights or restored from a checkpoint.
+    """
+
+    def __init__(self, root_rank, device=''):
+        """Construct a new BroadcastGlobalVariablesHook that will broadcast all
+        global variables from root rank to all other processes during initialization.
+
+        Args:
+          root_rank:
+            Rank that will send data, other ranks will receive data.
+          device:
+            Device to be used for broadcasting. Uses GPU by default
+            if Horovod was build with HOROVOD_GPU_BROADCAST.
+        """
+        super(BroadcastBatchNormHook, self).__init__()
+        self.root_rank = root_rank
+        self.bcast_op = None
+        self.device = device
+
+    def begin(self):
+        if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
+            with tf.device(self.device):
+                # lp-todo: all_reduce first
+                self.bcast_op = tf.group(*[tf.assign(var, hvd.broadcast(var, self.root_rank))
+                                           for var in tf.get_collection(tf.GraphKeys.UPDATE_OPS)])
 
     def after_create_session(self, session, coord):
         lp_debug('br begin')
@@ -166,6 +204,8 @@ class HorovodEstimator(estimator.Estimator):
         Returns:
           Loss from training
         """
+
+        # lp: add br hook
         worker_hooks = [BroadcastGlobalVariablesHook(0)]
         with ops.Graph().as_default() as g, g.device(self._device_fn):
             random_seed.set_random_seed(self._config.tf_random_seed)
