@@ -214,11 +214,13 @@ def cnn_model_fn(features, labels, mode, params):
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
-        loss_sum = tf.identity(loss, name='loss_sum')
-        loss_avg = hvd.allreduce(loss_sum)
-        loss_avg = tf.identity(loss_avg, 'loss_avg')
+        train_op = tf.group(minimize_op, update_ops)
 
-        train_op = tf.group(minimize_op, update_ops, loss_avg)
+        loss_sum = tf.identity(loss, name='loss_sum')
+
+        loss_avg = hvd.allreduce(loss_sum)
+
+        loss_avg = tf.identity(loss_avg, 'loss_avg')
 
         if hvd.rank() == 0:
 
