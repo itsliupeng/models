@@ -74,14 +74,6 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         session.run(self.bcast_op)
         lp_debug_rank0('br end after_create_session')
 
-    def before_run(self, run_context):  # pylint: disable=unused-argument
-        return None
-
-    def after_run(self, run_context, run_values):
-        lp_debug('br begin after_run')
-        run_context.session.run(self.bcast_op)
-        lp_debug('br end after_run')
-
 
 class BroadcastBatchNormHook(tf.train.SessionRunHook):
     def __init__(self, root_rank, device=''):
@@ -105,7 +97,7 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(tf.train.SessionRunHook):
-    def __init__(self, loss_tensor, every_n_iter=100):
+    def __init__(self, loss_tensor, every_n_iter=300):
         self._loss_tensor = loss_tensor
         self._every_n_iter = every_n_iter
 
