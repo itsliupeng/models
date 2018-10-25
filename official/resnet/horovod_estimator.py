@@ -179,9 +179,9 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         self._iter_count += 1
         if self._should_trigger:
             loss = run_values.results
-            lp_debug('loss {}'.format(loss))
+            lp_debug('loss {} iter {}'.format(loss, self._iter_count))
             loss_avg = run_context.session.run(self.avg_op)
-            lp_debug_rank0('loss_avg {}'.format(loss_avg))
+            lp_debug_rank0('loss_avg {} iter {}'.format(loss_avg, self._iter_count))
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
