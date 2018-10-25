@@ -357,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', help='', type=int, default=32)
     parser.add_argument('--train_epochs', help='', type=int, default=90)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=30)
-    parser.add_argument('--save_checkpoints_steps', help='', type=int, default=3000)
+    parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
 
     flags_obj = parser.parse_args()
 
