@@ -290,10 +290,21 @@ def main(unused_argv):
     # Horovod: initialize Horovod.
     hvd.init()
 
+    os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+    # Create session config based on values of inter_op_parallelism_threads and
+    # intra_op_parallelism_threads. Note that we default to having
+    # allow_soft_placement = True, which is required for multi-GPU and not
+    # harmful for other modes.
+    session_config = tf.ConfigProto(
+        inter_op_parallelism_threads=8,
+        intra_op_parallelism_threads=4,
+        allow_soft_placement=True)
+
+
     # Horovod: pin GPU to be used to process local rank (one GPU per process)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.gpu_options.visible_device_list = str(hvd.local_rank())
+    session_config.gpu_options.allow_growth = True
+    session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
@@ -304,7 +315,7 @@ def main(unused_argv):
 
     # Create the tf.estimator
     classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-                                  config=tf.estimator.RunConfig(session_config=config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
+                                  config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
 
     def input_fn_train(num_epochs):
