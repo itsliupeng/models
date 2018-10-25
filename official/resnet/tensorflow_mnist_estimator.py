@@ -31,7 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, AllReduceTensorHook
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -327,6 +327,8 @@ def main(unused_argv):
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
+    init_hooks = BroadcastGlobalVariablesHook(0)
+
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
     schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
@@ -339,6 +341,9 @@ def main(unused_argv):
                 train_hooks = [logging_hook]
             else:
                 train_hooks = []
+
+            if cycle_index == 0:
+                train_hooks.append(init_hooks)
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, steps=500, max_steps=None)

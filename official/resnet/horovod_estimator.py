@@ -323,7 +323,6 @@ class HorovodEstimator(estimator.Estimator):
         ops.add_to_collection(ops.GraphKeys.LOSSES, estimator_spec.loss)
         worker_hooks.extend(hooks)
         worker_hooks.extend([
-            BroadcastGlobalVariablesHook(0),
             # lp: loss hook
             AllReduceTensorHook(estimator_spec.loss),
             training.NanTensorHook(estimator_spec.loss)
