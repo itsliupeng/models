@@ -96,9 +96,10 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(tf.train.SessionRunHook):
-    def __init__(self, named_tensor, every_n_iter=300):
+    def __init__(self, named_tensor, every_n_iter=100, print_rank0=True):
         self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
+        self._print_rank0 = print_rank0
 
     def begin(self):
         self.avg_ops = {tag: hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
@@ -107,7 +108,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         self._global_step_tensor = training_util._get_or_create_global_step_read()
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        return SessionRunArgs(self._global_step_tensor)
+        return SessionRunArgs(self._global_stsep_tensor)
 
     def _log_tensors(self, tensor_values):
         original = np.get_printoptions()
@@ -117,13 +118,19 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         for tag, tensor in tensor_values.items():
             stats.append("%s = %s" % (tag, tensor))
 
-        logging.info("%s", ", ".join(stats))
+        if self._print_rank0:
+            if hvd.rank() == 0:
+                logging.info("allreduce tensor: %s", ", ".join(stats))
+        else:
+            logging.info("allreduce tensor: %s", ", ".join(stats))
+
         np.set_printoptions(**original)
 
     def after_run(self, run_context, run_values):
         global_step = run_values.results + 1
         if global_step % self._every_n_iter == 0:
             avg_values = run_context.session.run(self.avg_ops)
+            avg_values['step'] = global_step
             self._log_tensors(avg_values)
 
 
