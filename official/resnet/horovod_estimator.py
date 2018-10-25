@@ -108,7 +108,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         self._global_step_tensor = training_util._get_or_create_global_step_read()
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        return SessionRunArgs(self._global_stsep_tensor)
+        return SessionRunArgs(self._global_step_tensor)
 
     def _log_tensors(self, tensor_values):
         original = np.get_printoptions()
