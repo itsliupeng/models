@@ -127,10 +127,10 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         np.set_printoptions(**original)
 
     def after_run(self, run_context, run_values):
-        global_step = run_values.results + 1
+        global_step = run_values.results
         if global_step % self._every_n_iter == 0:
             avg_values = run_context.session.run(self.avg_ops)
-            avg_values['step'] = global_step
+            avg_values['step'] = global_step + 1
             self._log_tensors(avg_values)
 
 
