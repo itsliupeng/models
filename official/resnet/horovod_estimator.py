@@ -2,6 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import socket
+
+import tensorflow as tf
 from tensorflow import estimator
 from tensorflow.python.estimator import model_fn as model_fn_lib
 from tensorflow.python.framework import ops
@@ -12,12 +15,9 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
+from tensorflow.python.training.basic_session_run_hooks import SecondOrStepTimer
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
-from tensorflow.python.training.basic_session_run_hooks import NeverTriggerTimer, SecondOrStepTimer
-import tensorflow as tf
-import socket
-import numpy as np
 
 import horovod.tensorflow as hvd
 
@@ -31,6 +31,7 @@ def is_rank0():
 def lp_debug(msg):
     head = 'lp-debug rank{}/{} in {}: '.format(hvd.rank(), hvd.size(), socket.gethostname())
     tf.logging.info('{}: {}'.format(head, msg))
+
 
 def lp_debug_rank0(msg):
     if is_rank0():
@@ -161,20 +162,26 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
     #         values = session.run(self._current_tensors)
     #         self._log_tensors(values)
 
-    def __init__(self, loss_tensor):
+    def __init__(self, loss_tensor, every_n_iter=100):
         self._loss_tensor = loss_tensor
+        self._timer = SecondOrStepTimer(every_steps=every_n_iter)
 
     def begin(self):
         self.avg_op = hvd.allreduce(self._loss_tensor)
+        self._iter_count = 0
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        return SessionRunArgs(self._loss_tensor)
+        self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+        if self._should_trigger:
+            return SessionRunArgs(self._loss_tensor)
 
     def after_run(self, run_context, run_values):
-        loss = run_values.results
-        lp_debug('loss {}'.format(loss))
-        loss_avg = run_context.session.run(self.avg_op)
-        lp_debug_rank0('loss_avg {}'.format(loss_avg))
+        self._iter_count += 1
+        if self._should_trigger:
+            loss = run_values.results
+            lp_debug('loss {}'.format(loss))
+            loss_avg = run_context.session.run(self.avg_op)
+            lp_debug_rank0('loss_avg {}'.format(loss_avg))
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
@@ -250,7 +257,9 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    lp_debug('all hooks {}\n, hooks {}\n, chief_only_hooks {}\n, checkpoint_dir {}'.format(all_hooks, hooks, chief_only_hooks, checkpoint_dir))
+    lp_debug('all hooks {}\n, hooks {}\n, chief_only_hooks {}\n, checkpoint_dir {}'.format(all_hooks, hooks,
+                                                                                           chief_only_hooks,
+                                                                                           checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
