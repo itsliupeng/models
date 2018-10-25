@@ -104,10 +104,10 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         self.avg_ops = {tag: hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
                                  for (tag, tensor) in self._named_tensor.items()}
 
+        self._global_step_tensor = training_util._get_or_create_global_step_read()
+
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        self.step = training_util._get_or_create_global_step_read()
-        if self.step % self._every_n_iter == 0:
-            return SessionRunArgs(self._named_tensor)
+        return SessionRunArgs(self._global_step_tensor)
 
     def _log_tensors(self, tensor_values):
         original = np.get_printoptions()
@@ -121,7 +121,8 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         np.set_printoptions(**original)
 
     def after_run(self, run_context, run_values):
-        if self.step % self._every_n_iter == 0:
+        global_step = run_values.results + 1
+        if global_step % self._every_n_iter == 0:
             avg_values = run_context.session.run(self.avg_ops)
             self._log_tensors(avg_values)
 
