@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import socket
 
+import numpy as np
 import tensorflow as tf
 from tensorflow import estimator
 from tensorflow.python.estimator import model_fn as model_fn_lib
@@ -15,7 +16,6 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
-from tensorflow.python.training.basic_session_run_hooks import SecondOrStepTimer
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
 
@@ -95,25 +95,35 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
         lp_debug('br end')
 
 
-
 class AllReduceTensorHook(tf.train.SessionRunHook):
-    def __init__(self, loss_tensor, every_n_iter=300):
-        self._loss_tensor = loss_tensor
+    def __init__(self, named_tensor, every_n_iter=300):
+        self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
 
     def begin(self):
-        self.avg_op = hvd.allreduce(self._loss_tensor)
-        self._iter_count = 0
+        self.avg_ops = {tag: hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
+                                 for (tag, tensor) in self._named_tensor.items()}
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
         if self._iter_count % self._every_n_iter == 0:
-            return SessionRunArgs(self._loss_tensor)
+            return SessionRunArgs(self._named_tensor)
+
+    def _log_tensors(self, tensor_values):
+        original = np.get_printoptions()
+        np.set_printoptions(suppress=True)
+
+        stats = []
+        for tag, tensor in tensor_values.items():
+            stats.append("%s = %s" % (tag, tensor))
+
+        logging.info("%s", ", ".join(stats))
+        np.set_printoptions(**original)
 
     def after_run(self, run_context, run_values):
-        self._iter_count += 1
-        if self._iter_count % self._every_n_iter == 0:
-            loss_avg = run_context.session.run(self.avg_op)
-            lp_debug_rank0('loss_avg {} iter {}'.format(loss_avg, self._iter_count))
+        step = training_util._get_or_create_global_step_read()
+        if self._iter_count % step == 0:
+            avg_values = run_context.session.run(self.avg_ops)
+            self._log_tensors(avg_values)
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
@@ -189,9 +199,9 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    lp_debug('all hooks {}\n, hooks {}\n, chief_only_hooks {}\n, checkpoint_dir {}'.format(all_hooks, hooks,
-                                                                                           chief_only_hooks,
-                                                                                           checkpoint_dir))
+    # lp_debug('all hooks {}\n, hooks {}\n, chief_only_hooks {}\n, checkpoint_dir {}'.format(all_hooks, hooks,
+    #                                                                                        chief_only_hooks,
+    #                                                                                        checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
@@ -257,7 +267,7 @@ class HorovodEstimator(estimator.Estimator):
         worker_hooks.extend(hooks)
         worker_hooks.extend([
             # lp: loss hook
-            AllReduceTensorHook(estimator_spec.loss),
+            AllReduceTensorHook('loss_avg', 'loss'),
             training.NanTensorHook(estimator_spec.loss)
         ])
         if self._config.log_step_count_steps is not None:
