@@ -105,7 +105,8 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
                                  for (tag, tensor) in self._named_tensor.items()}
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        if self._iter_count % self._every_n_iter == 0:
+        self.step = training_util._get_or_create_global_step_read()
+        if self.step % self._every_n_iter == 0:
             return SessionRunArgs(self._named_tensor)
 
     def _log_tensors(self, tensor_values):
@@ -120,8 +121,7 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
         np.set_printoptions(**original)
 
     def after_run(self, run_context, run_values):
-        step = training_util._get_or_create_global_step_read()
-        if step % self._every_n_iter == 0:
+        if self.step % self._every_n_iter == 0:
             avg_values = run_context.session.run(self.avg_ops)
             self._log_tensors(avg_values)
 
