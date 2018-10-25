@@ -164,20 +164,19 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
 
     def __init__(self, loss_tensor, every_n_iter=100):
         self._loss_tensor = loss_tensor
-        self._timer = SecondOrStepTimer(every_steps=every_n_iter)
+        self._every_n_iter = every_n_iter
 
     def begin(self):
         self.avg_op = hvd.allreduce(self._loss_tensor)
         self._iter_count = 0
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
-        if self._should_trigger:
+        if self._iter_count % self._every_n_iter == 0:
             return SessionRunArgs(self._loss_tensor)
 
     def after_run(self, run_context, run_values):
         self._iter_count += 1
-        if self._should_trigger:
+        if self._iter_count % self._every_n_iter == 0:
             loss = run_values.results
             lp_debug('loss {} iter {}'.format(loss, self._iter_count))
             loss_avg = run_context.session.run(self.avg_op)
