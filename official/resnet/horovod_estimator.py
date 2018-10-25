@@ -96,72 +96,6 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(tf.train.SessionRunHook):
-    # def __init__(self, tensors, every_n_iter=None, every_n_secs=None, at_end=False, formatter=None, rank=0):
-    #     self._loss_tensor = tensors
-    #     only_log_at_end = (
-    #             at_end and (every_n_iter is None) and (every_n_secs is None))
-    #     if (not only_log_at_end and
-    #             (every_n_iter is None) == (every_n_secs is None)):
-    #         raise ValueError(
-    #             "either at_end and/or exactly one of every_n_iter and every_n_secs "
-    #             "must be provided.")
-    #     if every_n_iter is not None and every_n_iter <= 0:
-    #         raise ValueError("invalid every_n_iter=%s." % every_n_iter)
-    #     if not isinstance(tensors, dict):
-    #         self._tag_order = tensors
-    #         tensors = {item: item for item in tensors}
-    #     else:
-    #         self._tag_order = sorted(tensors.keys())
-    #     self._tensors = tensors
-    #     self._formatter = formatter
-    #     self._timer = (
-    #         NeverTriggerTimer() if only_log_at_end else
-    #         SecondOrStepTimer(every_secs=every_n_secs, every_steps=every_n_iter))
-    #     self._log_at_end = at_end
-    #     self.rank = rank
-    #
-    # def begin(self):
-    #     self._timer.reset()
-    #     self._iter_count = 0
-    #     # Convert names to tensors if given
-    #     self._current_tensors = {tag: hvd.allreduce(tf.identity(tensor, 'tower_{}'.format(tag)))
-    #                              for (tag, tensor) in self._tensors.items()}
-    #
-    # def before_run(self, run_context):  # pylint: disable=unused-argument
-    #     self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
-    #     if self._should_trigger:
-    #         return SessionRunArgs(self._current_tensors)
-    #     else:
-    #         return None
-    #
-    # def _log_tensors(self, tensor_values):
-    #     original = np.get_printoptions()
-    #     np.set_printoptions(suppress=True)
-    #     elapsed_secs, _ = self._timer.update_last_triggered_step(self._iter_count)
-    #     if self._formatter:
-    #         logging.info(self._formatter(tensor_values))
-    #     else:
-    #         stats = []
-    #         for tag in self._tag_order:
-    #             stats.append("%s = %s" % (tag, tensor_values[tag]))
-    #         if elapsed_secs is not None:
-    #             logging.info("%s (%.3f sec)", ", ".join(stats), elapsed_secs)
-    #         else:
-    #             logging.info("%s", ", ".join(stats))
-    #     np.set_printoptions(**original)
-    #
-    # def after_run(self, run_context, run_values):
-    #     _ = run_context
-    #     if self._should_trigger and hvd.rank() == self.rank:
-    #         self._log_tensors(run_values.results)
-    #
-    #     self._iter_count += 1
-    #
-    # def end(self, session):
-    #     if self._log_at_end:
-    #         values = session.run(self._current_tensors)
-    #         self._log_tensors(values)
-
     def __init__(self, loss_tensor, every_n_iter=100):
         self._loss_tensor = loss_tensor
         self._every_n_iter = every_n_iter
@@ -177,8 +111,6 @@ class AllReduceTensorHook(tf.train.SessionRunHook):
     def after_run(self, run_context, run_values):
         self._iter_count += 1
         if self._iter_count % self._every_n_iter == 0:
-            loss = run_values.results
-            lp_debug('loss {} iter {}'.format(loss, self._iter_count))
             loss_avg = run_context.session.run(self.avg_op)
             lp_debug_rank0('loss_avg {} iter {}'.format(loss_avg, self._iter_count))
 
