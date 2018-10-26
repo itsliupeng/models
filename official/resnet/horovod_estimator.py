@@ -129,6 +129,16 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
         np.set_printoptions(**original)
 
+    # def _summary(self, tensor_values):
+    #     summary = tf.Summary()
+    #     for tag, value in tensor_values.items():
+    #         summary.value.add(tag=tag, simple_value=value)
+    #         tf.summary.add_summary(summary, global_step)
+    #
+    #
+
+
+
     def after_run(self, run_context, run_values):
         global_step = run_values.results
         if global_step % self._every_n_iter == 0:
@@ -210,7 +220,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    # lp_debug('all hooks {}\n, hooks {}\n, chief_only_hooks {}\n, checkpoint_dir {}'.format(all_hooks, hooks,
+    lp_debug('all hooks {},\n hooks {},\n chief_only_hooks {},\n checkpoint_dir {}'.format(all_hooks, hooks,
     #                                                                                        chief_only_hooks,
     #                                                                                        checkpoint_dir))
     return MonitoredSession(
