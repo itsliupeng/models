@@ -226,7 +226,18 @@ def cnn_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
-    l2_loss = weight_decay * tf.losses.get_regularization_loss()
+    def exclude_batch_norm(name):
+        return 'batch_normalization' not in name
+
+    regularization_variables = [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
+                         if exclude_batch_norm(v.name)]
+
+    lp_debug('REGULARIZATION_Varaibles: {}'.format(regularization_variables))
+
+    # Add weight decay to the loss.
+    l2_loss = weight_decay * tf.add_n(regularization_variables)
+    tf.summary.scalar('l2_loss', l2_loss)
+
     loss = cross_entropy + l2_loss
 
     tf.identity(loss, name='loss')
@@ -329,7 +340,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'cross_entropy': 'cross_entropy'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=300)
 
     init_hooks = BroadcastGlobalVariablesHook(0)
