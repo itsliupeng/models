@@ -342,7 +342,7 @@ def main(unused_argv):
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
-    all_reduce_hook = AllReduceTensorHook({"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}, every_n_iter=100),
+    # all_reduce_hook = AllReduceTensorHook({"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}, every_n_iter=100),
 
     init_hooks = BroadcastGlobalVariablesHook(0)
 
@@ -356,9 +356,9 @@ def main(unused_argv):
         if num_train_epochs:
 
             if hvd.rank() == 0:
-                train_hooks = [logging_hook, all_reduce_hook]
+                train_hooks = [logging_hook]
             else:
-                train_hooks = [all_reduce_hook]
+                train_hooks = []
 
             if cycle_index == 0:
                 train_hooks.append(init_hooks)
