@@ -236,7 +236,7 @@ def cnn_model_fn(features, labels, mode, params):
         tf.summary.scalar('cross_entropy', cross_entropy)
         tf.summary.scalar('l2_loss', l2_loss)
 
-        lp_debug('REGULARIZATION_LOSSES size: {}'.format(len(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))))
+        lp_debug('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -270,7 +270,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
-            tf.logging.info('update_ops size : {}'.format(len(update_ops)))
+            tf.logging.info('update_ops : {}'.format(update_ops))
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
