@@ -252,6 +252,9 @@ def cnn_model_fn(features, labels, mode, params):
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
 
+    tf.identity(accuracy[1], name='train_accuracy')
+    tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
+
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
@@ -276,8 +279,6 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('learning_rate', learning_rate)
 
             # Create a tensor named train_accuracy for logging purposes
-            tf.identity(accuracy[1], name='train_accuracy')
-            tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 

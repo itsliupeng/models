@@ -282,7 +282,7 @@ class HorovodEstimator(estimator.Estimator):
             # lp: loss hook
             # AllReduceTensorHook({'loss_avg': 'loss'}),
             AllReduceTensorHook(
-                {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss',
+                {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'loss': 'loss',
                  'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}, every_n_iter=100),
             training.NanTensorHook(estimator_spec.loss)
         ])
