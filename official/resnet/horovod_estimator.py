@@ -106,7 +106,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
         self._summary_dir = summary_dir
 
     def begin(self):
-        self.avg_ops = {tag: hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
+        self.avg_ops = {'avg_{}'.format(tag): hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
                                  for (tag, tensor) in self._named_tensor.items()}
 
         self._global_step_tensor = training_util._get_or_create_global_step_read()
