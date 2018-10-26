@@ -234,7 +234,7 @@ def cnn_model_fn(features, labels, mode, params):
     lp_debug_rank0('REGULARIZATION_Varaibles: {}'.format(regularization_variables))
 
     # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n(tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in regularization_variables)
+    l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in regularization_variables])
     tf.identity(l2_loss, 'l2_loss')
     tf.summary.scalar('l2_loss', l2_loss)
 
