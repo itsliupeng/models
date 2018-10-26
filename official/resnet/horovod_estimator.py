@@ -221,8 +221,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
         all_hooks.extend(hooks)
 
     lp_debug('all hooks {},\n hooks {},\n chief_only_hooks {},\n checkpoint_dir {}'.format(all_hooks, hooks,
-    #                                                                                        chief_only_hooks,
-    #                                                                                        checkpoint_dir))
+                                                                                           chief_only_hooks,
+                                                                                           checkpoint_dir))
     return MonitoredSession(
         session_creator=session_creator,
         hooks=all_hooks,
