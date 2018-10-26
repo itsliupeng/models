@@ -243,43 +243,43 @@ class HorovodEstimator(estimator.Estimator):
         super(HorovodEstimator, self).__init__(model_fn=model_fn, model_dir=model_dir, config=config, params=params,
                                                warm_start_from=warm_start_from)
 
-    # def train(self,
-    #           input_fn,
-    #           hooks=None,
-    #           steps=None,
-    #           max_steps=None,
-    #           saving_listeners=None):
-    #     if self.config.task_type in (run_config.TaskType.EVALUATOR,
-    #                                  run_config.TaskType.PS):
-    #         raise ValueError(
-    #             'Train has been called wrong configuration. Please use '
-    #             'tf.estimator.train_and_evaluate which calls propper API according '
-    #             'to given configuration. Current configuration: {}.'.format(
-    #                 self.config))
-    #
-    #     with context.graph_mode():
-    #         if (steps is not None) and (max_steps is not None):
-    #             raise ValueError('Can not provide both steps and max_steps.')
-    #         if steps is not None and steps <= 0:
-    #             raise ValueError('Must specify steps > 0, given: {}'.format(steps))
-    #         if max_steps is not None and max_steps <= 0:
-    #             raise ValueError(
-    #                 'Must specify max_steps > 0, given: {}'.format(max_steps))
-    #
-    #         if max_steps is not None:
-    #             start_step = _load_global_step_from_checkpoint_dir(self._model_dir)
-    #             if max_steps <= start_step:
-    #                 logging.info('Skipping training since max_steps has already saved.')
-    #                 return self
-    #
-    #         # lp: avoid reporting type bug
-    #         # hooks = _check_hooks_type(hooks)
-    #         hooks.extend(self._convert_train_steps_to_hooks(steps, max_steps))
-    #
-    #         saving_listeners = _check_listeners_type(saving_listeners)
-    #         loss = self._train_model(input_fn, hooks, saving_listeners)
-    #         logging.info('Loss for final step: %s.', loss)
-    #         return self
+    def train(self,
+              input_fn,
+              hooks=None,
+              steps=None,
+              max_steps=None,
+              saving_listeners=None):
+        if self.config.task_type in (run_config.TaskType.EVALUATOR,
+                                     run_config.TaskType.PS):
+            raise ValueError(
+                'Train has been called wrong configuration. Please use '
+                'tf.estimator.train_and_evaluate which calls propper API according '
+                'to given configuration. Current configuration: {}.'.format(
+                    self.config))
+
+        with context.graph_mode():
+            if (steps is not None) and (max_steps is not None):
+                raise ValueError('Can not provide both steps and max_steps.')
+            if steps is not None and steps <= 0:
+                raise ValueError('Must specify steps > 0, given: {}'.format(steps))
+            if max_steps is not None and max_steps <= 0:
+                raise ValueError(
+                    'Must specify max_steps > 0, given: {}'.format(max_steps))
+
+            if max_steps is not None:
+                start_step = _load_global_step_from_checkpoint_dir(self._model_dir)
+                if max_steps <= start_step:
+                    logging.info('Skipping training since max_steps has already saved.')
+                    return self
+
+            # lp: avoid reporting type bug
+            # hooks = _check_hooks_type(hooks)
+            hooks.extend(self._convert_train_steps_to_hooks(steps, max_steps))
+
+            saving_listeners = _check_listeners_type(saving_listeners)
+            loss = self._train_model(input_fn, hooks, saving_listeners)
+            logging.info('Loss for final step: %s.', loss)
+            return self
 
     def _train_model(self, input_fn, hooks, saving_listeners):
         loss = self._train_model_default(input_fn, hooks, saving_listeners)
@@ -336,7 +336,7 @@ class HorovodEstimator(estimator.Estimator):
         worker_hooks.extend([
             # lp: loss hook
             # AllReduceTensorHook({'loss_avg': 'loss'}),
-            AllReduceTensorHook({'loss': 'loss'}, every_n_iter=100),
+            # AllReduceTensorHook({'loss': 'loss'}, every_n_iter=100),
             training.NanTensorHook(estimator_spec.loss)
         ])
         if self._config.log_step_count_steps is not None:
