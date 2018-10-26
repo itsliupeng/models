@@ -108,9 +108,9 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
         self._global_step_tensor = training_util._get_or_create_global_step_read()
 
-        if is_rank0():
-            for tag, tensor in self.avg_ops.items():
-                tf.summary.scalar(tag, tensor, family='allreduce')
+        # if is_rank0():
+        #     for tag, tensor in self.avg_ops.items():
+        #         tf.summary.scalar(tag, tensor, family='allreduce')
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
         return SessionRunArgs(self._global_step_tensor)
