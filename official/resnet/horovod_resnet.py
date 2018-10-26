@@ -235,11 +235,9 @@ def cnn_model_fn(features, labels, mode, params):
 
     # Add weight decay to the loss.
     l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in regularization_variables])
-    tf.identity(l2_loss, 'l2_loss')
-    tf.summary.scalar('l2_loss', l2_loss)
-
     loss = cross_entropy + l2_loss
 
+    tf.identity(l2_loss, 'l2_loss')
     tf.identity(loss, name='loss')
     tf.identity(cross_entropy, name='cross_entropy')
 
