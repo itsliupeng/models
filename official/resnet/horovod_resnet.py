@@ -271,11 +271,11 @@ def cnn_model_fn(features, labels, mode, params):
 
         train_op = tf.group(minimize_op, update_ops)
 
+        tf.identity(learning_rate, name='learning_rate')
+
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
-            tf.identity(learning_rate, name='learning_rate')
             tf.summary.scalar('learning_rate', learning_rate)
-
             # Create a tensor named train_accuracy for logging purposes
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
