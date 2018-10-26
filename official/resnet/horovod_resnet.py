@@ -353,8 +353,9 @@ def main(unused_argv):
     for cycle_index, num_train_epochs in enumerate(schedule):
         lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
-        train_hooks = [all_reduce_hook]
         if num_train_epochs:
+            train_hooks = [all_reduce_hook]
+
             if hvd.rank() == 0:
                 train_hooks.append(logging_hook)
             else:
