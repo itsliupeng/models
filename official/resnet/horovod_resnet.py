@@ -31,7 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -229,13 +229,13 @@ def cnn_model_fn(features, labels, mode, params):
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name
 
-    regularization_variables = [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
-                         if exclude_batch_norm(v.name)]
+    regularization_variables = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
 
-    lp_debug('REGULARIZATION_Varaibles: {}'.format(regularization_variables))
+    lp_debug_rank0('REGULARIZATION_Varaibles: {}'.format(regularization_variables))
 
     # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n(regularization_variables)
+    l2_loss = weight_decay * tf.add_n(tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in regularization_variables)
+    tf.identity(l2_loss, 'l2_loss')
     tf.summary.scalar('l2_loss', l2_loss)
 
     loss = cross_entropy + l2_loss
@@ -247,7 +247,7 @@ def cnn_model_fn(features, labels, mode, params):
         tf.summary.scalar('cross_entropy', cross_entropy)
         tf.summary.scalar('l2_loss', l2_loss)
 
-        lp_debug('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
+        lp_debug_rank0('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -281,7 +281,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
-            tf.logging.info('update_ops : {}'.format(update_ops))
+            lp_debug_rank0('update_ops : {}'.format(update_ops))
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
