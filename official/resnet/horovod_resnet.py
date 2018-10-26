@@ -31,7 +31,7 @@ import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
 from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, AllReduceTensorHook
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -341,7 +341,8 @@ def main(unused_argv):
             num_epochs=1)
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=300)
+    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
+    all_reduce_hook = AllReduceTensorHook({"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}, every_n_iter=100),
 
     init_hooks = BroadcastGlobalVariablesHook(0)
 
@@ -352,9 +353,10 @@ def main(unused_argv):
     for cycle_index, num_train_epochs in enumerate(schedule):
         lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
+        train_hooks = [all_reduce_hook]
         if num_train_epochs:
             if hvd.rank() == 0:
-                train_hooks = [logging_hook]
+                train_hooks.append(logging_hook)
             else:
                 train_hooks = []
 
