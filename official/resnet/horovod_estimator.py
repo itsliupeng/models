@@ -18,6 +18,7 @@ from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
+from tensorflow.python.training import session_run_hook
 
 import horovod.tensorflow as hvd
 
@@ -95,7 +96,7 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
         lp_debug('br end')
 
 
-class AllReduceTensorHook(tf.train.SessionRunHook):
+class AllReduceTensorHook(session_run_hook.SessionRunHook):
     def __init__(self, named_tensor, every_n_iter=100, print_rank0=True):
         self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
