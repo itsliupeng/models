@@ -341,7 +341,7 @@ def main(unused_argv):
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
-    all_reduce_hook = AllReduceTensorHook(tensors_to_log, every_n_iter=100)
+    all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
 
     init_hooks = BroadcastGlobalVariablesHook(0)
 

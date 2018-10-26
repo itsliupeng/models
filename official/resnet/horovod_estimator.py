@@ -99,10 +99,11 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(session_run_hook.SessionRunHook):
-    def __init__(self, named_tensor, every_n_iter=100, print_rank0=True):
+    def __init__(self, named_tensor, summary_dir=None, every_n_iter=100, print_rank0=True):
         self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
         self._print_rank0 = print_rank0
+        self._summary_dir = summary_dir
 
     def begin(self):
         self.avg_ops = {tag: hvd.allreduce(basic_session_run_hooks._as_graph_element(tensor))
@@ -129,15 +130,15 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
         np.set_printoptions(**original)
 
-    # def _summary(self, tensor_values):
-    #     summary = tf.Summary()
-    #     for tag, value in tensor_values.items():
-    #         summary.value.add(tag=tag, simple_value=value)
-    #         tf.summary.add_summary(summary, global_step)
-    #
-    #
+    def _summary(self, tensor_values, step):
+        if self._summary_dir:
+            writer = tf.summary.FileWriterCache.get(self._summary_dir)
+            this_summary = tf.Summary()
+            for tag, value in tensor_values.items():
+                this_summary.value.add(tag=tag, simple_value=value)
+                writer.add_summary(this_summary, step)
 
-
+            writer.flush()
 
     def after_run(self, run_context, run_values):
         global_step = run_values.results
@@ -145,6 +146,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
             avg_values = run_context.session.run(self.avg_ops)
             avg_values['step'] = global_step
             self._log_tensors(avg_values)
+            self._summary(avg_values, global_step)
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
