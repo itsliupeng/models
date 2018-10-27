@@ -317,8 +317,8 @@ def main(unused_argv):
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128)
+        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90] + 90,
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128 * 0.3)
 
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
