@@ -347,10 +347,11 @@ def main(unused_argv):
 
     if flags_obj.evaluate:
         if hvd.rank() == 0:
+            lp_debug('begin evaluate')
             eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
             lp_debug(eval_results)
+            lp_debug('end evaluate')
 
-        return
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
