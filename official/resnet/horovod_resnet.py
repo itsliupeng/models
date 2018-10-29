@@ -342,8 +342,15 @@ def main(unused_argv):
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
-
     init_hooks = BroadcastGlobalVariablesHook(0)
+
+
+    if flags_obj.evaluate:
+        if hvd.rank() == 0:
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+            lp_debug(eval_results)
+
+        return
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
@@ -380,6 +387,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_epochs', help='', type=int, default=90)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=90)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
+    parser.add_argument('--evaluate', help='', action='store_true')
 
     flags_obj = parser.parse_args()
 
