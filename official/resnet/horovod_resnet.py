@@ -360,23 +360,15 @@ def main(unused_argv):
         lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
         if num_train_epochs:
-
-            # # Create the tf.estimator
-            # classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-            #                               config=tf.estimator.RunConfig(session_config=session_config,
-            #                                                             save_checkpoints_steps=flags_obj.save_checkpoints_steps),
-            #                               params={'learning_rate_fn': learning_rate_fn})
-
             if hvd.rank() == 0:
                 train_hooks = [logging_hook, all_reduce_hook]
             else:
                 train_hooks = [all_reduce_hook]
 
-
             train_hooks.append(init_hooks)
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
-                             hooks=train_hooks, steps=200, max_steps=None)
+                             hooks=train_hooks, max_steps=None)
 
             if hvd.rank() == 0:
                 lp_debug('begin evaluate')
@@ -392,7 +384,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
     parser.add_argument('--batch_size', help='', type=int, default=32)
     parser.add_argument('--train_epochs', help='', type=int, default=90)
-    parser.add_argument('--epochs_between_evals', help='', type=int, default=90)
+    parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
     parser.add_argument('--evaluate', help='', action='store_true')
 
