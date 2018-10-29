@@ -323,9 +323,9 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the tf.estimator
-    classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-                                  config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
-                                  params={'learning_rate_fn': learning_rate_fn})
+    # classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+    #                               config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
+    #                               params={'learning_rate_fn': learning_rate_fn})
 
     def input_fn_train(num_epochs):
         return input_fn(
@@ -344,12 +344,12 @@ def main(unused_argv):
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
 
-    if flags_obj.evaluate:
-        lp_debug('begin evaluate')
-        eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
-        lp_debug(eval_results)
-        lp_debug('end evaluate')
-        return
+    # if flags_obj.evaluate:
+    #     lp_debug('begin evaluate')
+    #     eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+    #     lp_debug(eval_results)
+    #     lp_debug('end evaluate')
+    #     return
 
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
@@ -361,13 +361,18 @@ def main(unused_argv):
 
         if num_train_epochs:
 
+            # Create the tf.estimator
+            classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+                                          config=tf.estimator.RunConfig(session_config=session_config,
+                                                                        save_checkpoints_steps=flags_obj.save_checkpoints_steps),
+                                          params={'learning_rate_fn': learning_rate_fn})
+
             if hvd.rank() == 0:
                 train_hooks = [logging_hook, all_reduce_hook]
             else:
                 train_hooks = [all_reduce_hook]
 
-            if cycle_index == 0:
-                train_hooks.append(init_hooks)
+            train_hooks.append(init_hooks)
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, steps=200, max_steps=None)
