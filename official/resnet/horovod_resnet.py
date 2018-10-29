@@ -377,10 +377,11 @@ def main(unused_argv):
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, steps=200, max_steps=None)
 
-            lp_debug('begin evaluate')
-            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
-            lp_debug(eval_results)
-            lp_debug('end evaluate')
+            if hvd.rank() == 0:
+                lp_debug('begin evaluate')
+                eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+                lp_debug(eval_results)
+                lp_debug('end evaluate')
 
 
 if __name__ == "__main__":
