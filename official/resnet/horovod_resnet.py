@@ -372,8 +372,8 @@ def main(unused_argv):
             else:
                 train_hooks = [all_reduce_hook]
 
-            if cycle_index == 0:
-                train_hooks.append(init_hooks)
+
+            train_hooks.append(init_hooks)
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, steps=200, max_steps=None)
