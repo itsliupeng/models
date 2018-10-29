@@ -344,12 +344,12 @@ def main(unused_argv):
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
 
-    # if flags_obj.evaluate:
-    #     lp_debug('begin evaluate')
-    #     eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
-    #     lp_debug(eval_results)
-    #     lp_debug('end evaluate')
-    #     return
+    if flags_obj.evaluate:
+        lp_debug('begin evaluate')
+        eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+        lp_debug(eval_results)
+        lp_debug('end evaluate')
+        return
 
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
