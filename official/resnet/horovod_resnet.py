@@ -323,9 +323,9 @@ def main(unused_argv):
     model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
     # Create the tf.estimator
-    # classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-    #                               config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
-    #                               params={'learning_rate_fn': learning_rate_fn})
+    classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+                                  config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
+                                  params={'learning_rate_fn': learning_rate_fn})
 
     def input_fn_train(num_epochs):
         return input_fn(
@@ -361,11 +361,11 @@ def main(unused_argv):
 
         if num_train_epochs:
 
-            # Create the tf.estimator
-            classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
-                                          config=tf.estimator.RunConfig(session_config=session_config,
-                                                                        save_checkpoints_steps=flags_obj.save_checkpoints_steps),
-                                          params={'learning_rate_fn': learning_rate_fn})
+            # # Create the tf.estimator
+            # classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+            #                               config=tf.estimator.RunConfig(session_config=session_config,
+            #                                                             save_checkpoints_steps=flags_obj.save_checkpoints_steps),
+            #                               params={'learning_rate_fn': learning_rate_fn})
 
             if hvd.rank() == 0:
                 train_hooks = [logging_hook, all_reduce_hook]
