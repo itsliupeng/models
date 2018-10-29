@@ -30,8 +30,8 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
-from official.resnet.slim import inception_model
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, AllReduceTensorHook
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
+    AllReduceTensorHook
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -344,14 +344,12 @@ def main(unused_argv):
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
 
-
     if flags_obj.evaluate:
-        if hvd.rank() == 0:
-            lp_debug('begin evaluate')
-            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
-            lp_debug(eval_results)
-            lp_debug('end evaluate')
-            return
+        lp_debug('begin evaluate')
+        eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+        lp_debug(eval_results)
+        lp_debug('end evaluate')
+        return
 
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
