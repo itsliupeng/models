@@ -210,7 +210,7 @@ def cnn_model_fn(features, labels, mode, params):
     momentum = 0.9
 
     from official.resnet.slim import resnet_model
-    model = resnet_model.ResNet(resnet_size=200)
+    model = resnet_model.ResNet(resnet_size=50)
     logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     logits = tf.cast(logits, tf.float32)
