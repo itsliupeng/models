@@ -229,12 +229,16 @@ def cnn_model_fn(features, labels, mode, params):
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name
 
-    regularization_variables = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
+    trainable_variables = tf.trainable_variables()
+    trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
+    global_variables = tf.global_variables()
 
-    lp_debug_rank0('REGULARIZATION_Varaibles: {}'.format(regularization_variables))
+    lp_debug_rank0('global_variables {}: {}'.format(len(global_variables), global_variables))
+    lp_debug_rank0('trainable_variables {}: {}'.format(len(trainable_variables), trainable_variables))
+    lp_debug_rank0('trainable_variables_without_bn size {}: {}'.format(len(trainable_variables_without_bn), trainable_variables_without_bn))
 
     # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in regularization_variables])
+    l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
     loss = cross_entropy + l2_loss
 
     tf.identity(l2_loss, 'l2_loss')
@@ -245,7 +249,8 @@ def cnn_model_fn(features, labels, mode, params):
         tf.summary.scalar('cross_entropy', cross_entropy)
         tf.summary.scalar('l2_loss', l2_loss)
 
-        lp_debug_rank0('REGULARIZATION_LOSSES: {}'.format(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)))
+        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        lp_debug_rank0('regularization_losses size {}: {}'.format(len(regularization_losses), regularization_losses))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -268,10 +273,11 @@ def cnn_model_fn(features, labels, mode, params):
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
-
         train_op = tf.group(minimize_op, update_ops)
 
         tf.identity(learning_rate, name='learning_rate')
+
+        lp_debug_rank0('update_ops size {update_ops}: {}'.format(len(update_ops), update_ops))
 
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
@@ -279,8 +285,6 @@ def cnn_model_fn(features, labels, mode, params):
             # Create a tensor named train_accuracy for logging purposes
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
-
-            lp_debug_rank0('update_ops : {}'.format(update_ops))
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
