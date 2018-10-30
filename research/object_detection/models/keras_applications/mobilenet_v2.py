@@ -24,7 +24,7 @@ from object_detection.utils import ops
 
 
 # pylint: disable=invalid-name
-# This method copied from the slim mobilenet base network code (same license)
+# This method copied from the slim_raw mobilenet base network code (same license)
 def _make_divisible(v, divisor, min_value=None):
     if min_value is None:
         min_value = divisor

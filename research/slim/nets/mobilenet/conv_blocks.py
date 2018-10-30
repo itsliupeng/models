@@ -101,7 +101,7 @@ def split_separable_conv2d(input_tensor,
 
     Depthwise convolution, with default non-linearity,
     followed by 1x1 depthwise convolution.  This is similar to
-    slim.separable_conv2d, but differs in tha it applies batch
+    slim_raw.separable_conv2d, but differs in tha it applies batch
     normalization and non-linearity to depthwise. This  matches
     the basic building of Mobilenet Paper
     (https://arxiv.org/abs/1704.04861)

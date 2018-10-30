@@ -111,7 +111,7 @@ def create_optimizer(hparams):
 
 
 def train(loss, init_fn, hparams):
-    """Wraps slim.learning.train to run a training loop.
+    """Wraps slim_raw.learning.train to run a training loop.
 
     Args:
       loss: a loss tensor

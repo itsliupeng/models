@@ -28,7 +28,7 @@ def char_accuracy(predictions, targets, rej_char, streaming=False):
       predictions: predicted characters ids.
       targets: ground truth character ids.
       rej_char: the character id used to mark an empty element (end of sequence).
-      streaming: if True, uses the streaming mean from the slim.metric module.
+      streaming: if True, uses the streaming mean from the slim_raw.metric module.
 
     Returns:
       a update_ops for execution and value tensor whose value on evaluation
@@ -59,7 +59,7 @@ def sequence_accuracy(predictions, targets, rej_char, streaming=False):
       predictions: predicted character classes.
       targets: ground truth character classes.
       rej_char: the character id used to mark empty element (end of sequence).
-      streaming: if True, uses the streaming mean from the slim.metric module.
+      streaming: if True, uses the streaming mean from the slim_raw.metric module.
 
     Returns:
       a update_ops for execution and value tensor whose value on evaluation

@@ -15,9 +15,9 @@
 """Wrappers for third party pycocotools to be used within object_detection.
 
 Note that nothing in this file is tensorflow related and thus cannot
-be called directly as a slim metric, for example.
+be called directly as a slim_raw metric, for example.
 
-TODO(jonathanhuang): wrap as a slim metric in metrics.py
+TODO(jonathanhuang): wrap as a slim_raw metric in metrics.py
 
 
 Usage example: given a set of images with ids in the list image_ids

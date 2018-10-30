@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Builder function to construct tf-slim arg_scope for convolution, fc ops."""
+"""Builder function to construct tf-slim_raw arg_scope for convolution, fc ops."""
 import tensorflow as tf
 
 from object_detection.core import freezable_batch_norm
@@ -172,7 +172,7 @@ class KerasLayerHyperparams(object):
 
 
 def build(hyperparams_config, is_training):
-    """Builds tf-slim arg_scope for convolution ops based on the config.
+    """Builds tf-slim_raw arg_scope for convolution ops based on the config.
 
     Returns an arg_scope to use for convolution ops containing weights
     initializer, weights regularizer, activation function, batch norm function
@@ -193,7 +193,7 @@ def build(hyperparams_config, is_training):
       is_training: Whether the network is in training mode.
 
     Returns:
-      arg_scope_fn: A function to construct tf-slim arg_scope containing
+      arg_scope_fn: A function to construct tf-slim_raw arg_scope containing
         hyperparameters for ops.
 
     Raises:
@@ -255,13 +255,13 @@ def _build_activation_fn(activation_fn):
 
 
 def _build_slim_regularizer(regularizer):
-    """Builds a tf-slim regularizer from config.
+    """Builds a tf-slim_raw regularizer from config.
 
     Args:
       regularizer: hyperparams_pb2.Hyperparams.regularizer proto.
 
     Returns:
-      tf-slim regularizer.
+      tf-slim_raw regularizer.
 
     Raises:
       ValueError: On unknown regularizer.
@@ -401,7 +401,7 @@ def _build_keras_batch_norm_params(batch_norm):
       A dictionary containing Keras BatchNormalization parameters.
     """
     # Note: Although decay is defined to be 1 - momentum in batch_norm,
-    # decay in the slim batch_norm layers was erroneously defined and is
+    # decay in the slim_raw batch_norm layers was erroneously defined and is
     # actually the same as momentum in the Keras batch_norm layers.
     # For context, see: github.com/keras-team/keras/issues/6839
     batch_norm_params = {

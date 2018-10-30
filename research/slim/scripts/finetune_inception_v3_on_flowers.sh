@@ -20,8 +20,8 @@
 # 3. Evaluates the model on the Flowers validation set.
 #
 # Usage:
-# cd slim
-# ./slim/scripts/finetune_inception_v3_on_flowers.sh
+# cd slim_raw
+# ./slim_raw/scripts/finetune_inception_v3_on_flowers.sh
 set -e
 
 # Where the pre-trained InceptionV3 checkpoint is saved to.

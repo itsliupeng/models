@@ -209,7 +209,7 @@ def cnn_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     momentum = 0.9
 
-    from official.resnet.slim import resnet_model
+    from official.resnet import resnet_model
     model = resnet_model.ResNet(resnet_size=50)
     logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
 

@@ -15,12 +15,12 @@
 """Contains convenience wrappers for creating variables in TF-Slim.
 
 The variables module is typically used for defining model variables from the
-ops routines (see slim.ops). Such variables are used for training, evaluation
+ops routines (see slim_raw.ops). Such variables are used for training, evaluation
 and inference of models.
 
 All the variables created through this module would be added to the
-MODEL_VARIABLES collection, if you create a model variable outside slim, it can
-be added with slim.variables.add_variable(external_variable, reuse).
+MODEL_VARIABLES collection, if you create a model variable outside slim_raw, it can
+be added with slim_raw.variables.add_variable(external_variable, reuse).
 
 Usage:
   weights_initializer = tf.truncated_normal_initializer(stddev=0.01)
@@ -38,37 +38,37 @@ Usage:
 
   # More complex example.
 
-  net = slim.ops.conv2d(input, 32, [3, 3], scope='conv1')
-  net = slim.ops.conv2d(net, 64, [3, 3], scope='conv2')
-  with slim.arg_scope([variables.variable], restore=False):
-    net = slim.ops.conv2d(net, 64, [3, 3], scope='conv3')
+  net = slim_raw.ops.conv2d(input, 32, [3, 3], scope='conv1')
+  net = slim_raw.ops.conv2d(net, 64, [3, 3], scope='conv2')
+  with slim_raw.arg_scope([variables.variable], restore=False):
+    net = slim_raw.ops.conv2d(net, 64, [3, 3], scope='conv3')
 
   # Get all model variables from all the layers.
-  model_variables = slim.variables.get_variables()
+  model_variables = slim_raw.variables.get_variables()
 
   # Get all model variables from a specific the layer, i.e 'conv1'.
-  conv1_variables = slim.variables.get_variables('conv1')
+  conv1_variables = slim_raw.variables.get_variables('conv1')
 
   # Get all weights from all the layers.
-  weights = slim.variables.get_variables_by_name('weights')
+  weights = slim_raw.variables.get_variables_by_name('weights')
 
   # Get all bias from all the layers.
-  biases = slim.variables.get_variables_by_name('biases')
+  biases = slim_raw.variables.get_variables_by_name('biases')
 
   # Get all variables to restore.
   # (i.e. only those created by 'conv1' and 'conv2')
-  variables_to_restore = slim.variables.get_variables_to_restore()
+  variables_to_restore = slim_raw.variables.get_variables_to_restore()
 
 ************************************************
 * Initializing model variables from a checkpoint
 ************************************************
 
 # Create some variables.
-v1 = slim.variables.variable(name="v1", ..., restore=False)
-v2 = slim.variables.variable(name="v2", ...) # By default restore=True
+v1 = slim_raw.variables.variable(name="v1", ..., restore=False)
+v2 = slim_raw.variables.variable(name="v2", ...) # By default restore=True
 ...
 # The list of variables to restore should only contain 'v2'.
-variables_to_restore = slim.variables.get_variables_to_restore()
+variables_to_restore = slim_raw.variables.get_variables_to_restore()
 restorer = tf.train.Saver(variables_to_restore)
 with tf.Session() as sess:
   # Restore variables from disk.
@@ -83,13 +83,13 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.resnet.slim import scopes
+from official.resnet.slim_raw import scopes
 
-# Collection containing all the variables created using slim.variables
+# Collection containing all the variables created using slim_raw.variables
 # MODEL_VARIABLES = '_model_variables_'
 MODEL_VARIABLES = tf.GraphKeys.MODEL_VARIABLES
 
-# Collection containing the slim.variables that are created with restore=True.
+# Collection containing the slim_raw.variables that are created with restore=True.
 VARIABLES_TO_RESTORE = '_variables_to_restore_'
 
 

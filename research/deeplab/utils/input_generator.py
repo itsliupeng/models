@@ -27,7 +27,7 @@ def _get_data(data_provider, dataset_split):
     """Gets data from data provider.
   
     Args:
-      data_provider: An object of slim.data_provider.
+      data_provider: An object of slim_raw.data_provider.
       dataset_split: Dataset split.
   
     Returns:
@@ -82,7 +82,7 @@ def get(dataset,
     be directly used by training, evaluation or visualization.
   
     Args:
-      dataset: An instance of slim Dataset.
+      dataset: An instance of slim_raw Dataset.
       crop_size: Image crop size [height, width].
       batch_size: Batch size.
       min_resize_value: Desired size of the smaller image side.

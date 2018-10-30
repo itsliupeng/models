@@ -87,12 +87,12 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
 
     is equivalent to
 
-       net = slim.conv2d(inputs, num_outputs, 3, stride=1, padding='SAME')
+       net = slim_raw.conv2d(inputs, num_outputs, 3, stride=1, padding='SAME')
        net = subsample(net, factor=stride)
 
     whereas
 
-       net = slim.conv2d(inputs, num_outputs, 3, stride=stride, padding='SAME')
+       net = slim_raw.conv2d(inputs, num_outputs, 3, stride=stride, padding='SAME')
 
     is different when the input's height or width is even, which is why we add the
     current function. For more details, see ResnetUtilsTest.testConv2DSameEven().
@@ -271,6 +271,6 @@ def resnet_arg_scope(weight_decay=0.0001,
             # https://github.com/facebook/fb.resnet.torch. However the accompanying
             # code of 'Deep Residual Learning for Image Recognition' uses
             # padding='VALID' for pool1. You can switch to that choice by setting
-            # slim.arg_scope([slim.max_pool2d], padding='VALID').
+            # slim_raw.arg_scope([slim_raw.max_pool2d], padding='VALID').
             with slim.arg_scope([slim.max_pool2d], padding='SAME') as arg_sc:
                 return arg_sc

@@ -110,7 +110,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             denser resolutions.  The atrous rate is used to compensate for the
             denser feature maps by using an effectively larger receptive field.
             (This should typically be set to 1).
-          first_stage_box_predictor_arg_scope_fn: A function to generate tf-slim
+          first_stage_box_predictor_arg_scope_fn: A function to generate tf-slim_raw
             arg_scope for conv2d, separable_conv2d and fully_connected ops for the
             RPN box predictor.
           first_stage_box_predictor_kernel_size: Kernel size to use for the

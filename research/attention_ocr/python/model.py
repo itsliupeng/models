@@ -398,7 +398,7 @@ class Model(object):
           Total loss.
         """
         # NOTE: the return value of ModelLoss is not used directly for the
-        # gradient computation because under the hood it calls slim.losses.AddLoss,
+        # gradient computation because under the hood it calls slim_raw.losses.AddLoss,
         # which registers the loss in an internal collection and later returns it
         # as part of GetTotalLoss. We need to use total loss because model may have
         # multiple losses including regularization losses.

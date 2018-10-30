@@ -50,7 +50,7 @@ class MaskRCNNBoxHead(head.Head):
             include the background category, so if groundtruth labels take values
             in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
             assigned classification targets can range from {0,... K}).
-          fc_hyperparams_fn: A function to generate tf-slim arg_scope with
+          fc_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
             hyperparameters for fully connected ops.
           use_dropout: Option to use dropout or not.  Note that a single dropout
             op is applied here prior to both box and class predictions, which stands

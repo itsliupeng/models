@@ -47,7 +47,7 @@ class MaskRCNNKeypointHead(head.Head):
     
         Args:
           num_keypoints: (int scalar) number of keypoints.
-          conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+          conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
             hyperparameters for convolution ops.
           keypoint_heatmap_height: Desired output mask height. The default value
             is 14.

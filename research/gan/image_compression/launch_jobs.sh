@@ -59,7 +59,7 @@ Banner () {
 
 # Download the dataset. You will be asked for an ImageNet username and password.
 # To get one, register at http://www.image-net.org/.
-bazel build "${git_repo}/research/slim:download_and_convert_imagenet"
+bazel build "${git_repo}/research/slim_raw:download_and_convert_imagenet"
 "./bazel-bin/download_and_convert_imagenet" ${DATASET_DIR}
 
 # Run the compression model.

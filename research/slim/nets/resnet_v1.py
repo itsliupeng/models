@@ -34,18 +34,18 @@ units.
 
 Typical use:
 
-   from tensorflow.contrib.slim.nets import resnet_v1
+   from tensorflow.contrib.slim_raw.nets import resnet_v1
 
 ResNet-101 for image classification into 1000 classes:
 
    # inputs has shape [batch, 224, 224, 3]
-   with slim.arg_scope(resnet_v1.resnet_arg_scope()):
+   with slim_raw.arg_scope(resnet_v1.resnet_arg_scope()):
       net, end_points = resnet_v1.resnet_v1_101(inputs, 1000, is_training=False)
 
 ResNet-101 for semantic segmentation into 21 classes:
 
    # inputs has shape [batch, 513, 513, 3]
-   with slim.arg_scope(resnet_v1.resnet_arg_scope()):
+   with slim_raw.arg_scope(resnet_v1.resnet_arg_scope()):
       net, end_points = resnet_v1.resnet_v1_101(inputs,
                                                 21,
                                                 is_training=False,
@@ -178,8 +178,8 @@ def resnet_v1(inputs,
       num_classes: Number of predicted classes for classification tasks.
         If 0 or None, we return the features before the logit layer.
       is_training: whether batch_norm layers are in training mode. If this is set
-        to None, the callers can specify slim.batch_norm's is_training parameter
-        from an outer slim.arg_scope.
+        to None, the callers can specify slim_raw.batch_norm's is_training parameter
+        from an outer slim_raw.arg_scope.
       global_pool: If True, we perform global average pooling before computing the
         logits. Set to True for image classification, False for dense prediction.
       output_stride: If None, then the output will be computed at the nominal

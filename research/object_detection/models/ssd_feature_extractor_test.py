@@ -64,7 +64,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
             inputs so that the output dimensions are the same as if 'SAME' padding
             were used.
           use_keras: if True builds a keras-based feature extractor, if False builds
-            a slim-based one.
+            a slim_raw-based one.
         Returns:
           an ssd_meta_arch.SSDFeatureExtractor or an
           ssd_meta_arch.SSDKerasFeatureExtractor object.

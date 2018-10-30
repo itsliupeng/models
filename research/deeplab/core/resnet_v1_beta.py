@@ -15,7 +15,7 @@
 
 """Resnet v1 model variants.
 
-Code branched out from slim/nets/resnet_v1.py, and please refer to it for
+Code branched out from slim_raw/nets/resnet_v1.py, and please refer to it for
 more details.
 
 The original version ResNets-v1 were proposed by:
@@ -130,7 +130,7 @@ def resnet_v1_beta(inputs,
     selecting different block instantiations that produce ResNets of various
     depths.
   
-    The code is modified from slim/nets/resnet_v1.py, and please refer to it for
+    The code is modified from slim_raw/nets/resnet_v1.py, and please refer to it for
     more details.
   
     Args:

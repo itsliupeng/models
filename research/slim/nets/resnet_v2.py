@@ -28,18 +28,18 @@ The key difference of the full preactivation 'v2' variant compared to the
 
 Typical use:
 
-   from tensorflow.contrib.slim.nets import resnet_v2
+   from tensorflow.contrib.slim_raw.nets import resnet_v2
 
 ResNet-101 for image classification into 1000 classes:
 
    # inputs has shape [batch, 224, 224, 3]
-   with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+   with slim_raw.arg_scope(resnet_v2.resnet_arg_scope()):
       net, end_points = resnet_v2.resnet_v2_101(inputs, 1000, is_training=False)
 
 ResNet-101 for semantic segmentation into 21 classes:
 
    # inputs has shape [batch, 513, 513, 3]
-   with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+   with slim_raw.arg_scope(resnet_v2.resnet_arg_scope()):
       net, end_points = resnet_v2.resnet_v2_101(inputs,
                                                 21,
                                                 is_training=False,

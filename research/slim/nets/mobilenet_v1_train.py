@@ -167,7 +167,7 @@ def get_checkpoint_init_fn():
         global_step_reset = tf.assign(tf.train.get_or_create_global_step(), 0)
         # When restoring from a floating point model, the min/max values for
         # quantized weights and activations are not present.
-        # We instruct slim to ignore variables that are missing during restoration
+        # We instruct slim_raw to ignore variables that are missing during restoration
         # by setting ignore_missing_vars=True
         slim_init_fn = slim.assign_from_checkpoint_fn(
             FLAGS.fine_tune_checkpoint,

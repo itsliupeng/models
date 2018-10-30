@@ -24,7 +24,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
 
-from resnet.slim import resnet_model
+from resnet import resnet_model
 from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger

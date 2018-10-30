@@ -51,7 +51,7 @@ def build_convolutional_box_predictor(is_training,
     Args:
       is_training: Indicates whether the BoxPredictor is in training mode.
       num_classes: Number of classes.
-      conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+      conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
         hyperparameters for convolution ops.
       min_depth: Minimum feature depth prior to predicting box encodings
         and class predictions.
@@ -282,7 +282,7 @@ def build_weight_shared_convolutional_box_predictor(
         include the background category, so if groundtruth labels take values
         in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
         assigned classification targets can range from {0,... K}).
-      conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+      conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
         hyperparameters for convolution ops.
       depth: depth of conv layers.
       num_layers_before_predictor: Number of the additional conv layers before
@@ -372,7 +372,7 @@ def build_mask_rcnn_box_predictor(is_training,
           include the background category, so if groundtruth labels take values
           in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
           assigned classification targets can range from {0,... K}).
-        fc_hyperparams_fn: A function to generate tf-slim arg_scope with
+        fc_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
           hyperparameters for fully connected ops.
         use_dropout: Option to use dropout or not.  Note that a single dropout
           op is applied here prior to both box and class predictions, which stands
@@ -384,7 +384,7 @@ def build_mask_rcnn_box_predictor(is_training,
           than use a different box for each class.
         predict_instance_masks: If True, will add a third stage mask prediction
           to the returned class.
-        conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+        conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
           hyperparameters for convolution ops.
         mask_height: Desired output mask height. The default value is 14.
         mask_width: Desired output mask width. The default value is 14.
@@ -475,7 +475,7 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
       argscope_fn: A function that takes the following inputs:
           * hyperparams_pb2.Hyperparams proto
           * a boolean indicating if the model is in training mode.
-        and returns a tf slim argscope for Conv and FC hyperparameters.
+        and returns a tf slim_raw argscope for Conv and FC hyperparameters.
       box_predictor_config: box_predictor_pb2.BoxPredictor proto containing
         configuration.
       is_training: Whether the models is in training mode.

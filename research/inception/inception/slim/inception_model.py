@@ -24,14 +24,14 @@
       'epsilon': 0.001,
   }
   # Set weight_decay for weights in Conv and FC layers.
-  with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], weight_decay=0.00004):
-    with slim.arg_scope([slim.ops.conv2d],
+  with slim_raw.arg_scope([slim_raw.ops.conv2d, slim_raw.ops.fc], weight_decay=0.00004):
+    with slim_raw.arg_scope([slim_raw.ops.conv2d],
                         stddev=0.1,
                         activation=tf.nn.relu,
                         batch_norm_params=batch_norm_params):
       # Force all Variables to reside on the CPU.
-      with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
-        logits, endpoints = slim.inception.inception_v3(
+      with slim_raw.arg_scope([slim_raw.variables.variable], device='/cpu:0'):
+        logits, endpoints = slim_raw.inception.inception_v3(
             images,
             dropout_keep_prob=0.8,
             num_classes=num_classes,

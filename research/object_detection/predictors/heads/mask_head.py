@@ -49,7 +49,7 @@ class MaskRCNNMaskHead(head.Head):
             include the background category, so if groundtruth labels take values
             in {0, 1, .., K-1}, num_classes=K (and not K+1, even though the
             assigned classification targets can range from {0,... K}).
-          conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+          conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
             hyperparameters for convolution ops.
           mask_height: Desired output mask height. The default value is 14.
           mask_width: Desired output mask width. The default value is 14.

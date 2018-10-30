@@ -111,13 +111,13 @@ def separable_conv2d_same(inputs,
   
     is equivalent to
   
-       net = slim.separable_conv2d(inputs, num_outputs, 3,
+       net = slim_raw.separable_conv2d(inputs, num_outputs, 3,
          depth_multiplier=1, stride=1, padding='SAME')
        net = resnet_utils.subsample(net, factor=stride)
   
     whereas
   
-       net = slim.separable_conv2d(inputs, num_outputs, 3, stride=stride,
+       net = slim_raw.separable_conv2d(inputs, num_outputs, 3, stride=stride,
          depth_multiplier=1, padding='SAME')
   
     is different when the input's height or width is even, which is why we add the
@@ -142,7 +142,7 @@ def separable_conv2d_same(inputs,
       regularize_depthwise: Whether or not apply L2-norm regularization on the
         depthwise convolution weights.
       scope: Scope.
-      **kwargs: additional keyword arguments to pass to slim.conv2d
+      **kwargs: additional keyword arguments to pass to slim_raw.conv2d
   
     Returns:
       output: A 4-D tensor of size [batch, height_out, width_out, channels] with
@@ -384,7 +384,7 @@ def xception(inputs,
     Args:
       inputs: A tensor of size [batch, height_in, width_in, channels]. Must be
         floating point. If a pretrained checkpoint is used, pixel values should be
-        the same as during training (see go/slim-classification-models for
+        the same as during training (see go/slim_raw-classification-models for
         specifics).
       blocks: A list of length equal to the number of Xception blocks. Each
         element is an Xception Block object describing the units in the block.

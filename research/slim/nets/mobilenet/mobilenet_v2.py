@@ -99,7 +99,7 @@ def mobilenet(input_tensor,
     Inference mode is created by default. To create training use training_scope
     below.
 
-    with tf.contrib.slim.arg_scope(mobilenet_v2.training_scope()):
+    with tf.contrib.slim_raw.arg_scope(mobilenet_v2.training_scope()):
        logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
     Args:
@@ -107,7 +107,7 @@ def mobilenet(input_tensor,
       num_classes: number of classes
       depth_multiplier: The multiplier applied to scale number of
       channels in each layer. Note: this is called depth multiplier in the
-      paper but the name is kept for consistency with slim's model builder.
+      paper but the name is kept for consistency with slim_raw's model builder.
       scope: Scope of the operator
       conv_defs: Allows to override default conv def.
       finegrain_classification_mode: When set to True, the model
@@ -196,10 +196,10 @@ def training_scope(**kwargs):
     """Defines MobilenetV2 training scope.
 
     Usage:
-       with tf.contrib.slim.arg_scope(mobilenet_v2.training_scope()):
+       with tf.contrib.slim_raw.arg_scope(mobilenet_v2.training_scope()):
          logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
-    with slim.
+    with slim_raw.
 
     Args:
       **kwargs: Passed to mobilenet.training_scope. The following parameters

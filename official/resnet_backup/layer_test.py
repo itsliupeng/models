@@ -35,7 +35,7 @@ import sys
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from resnet.slim import resnet_model
+from resnet import resnet_model
 from official.utils.testing import reference_data
 
 DATA_FORMAT = "channels_last"  # CPU instructions often preclude channels_first

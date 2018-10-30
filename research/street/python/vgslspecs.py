@@ -365,7 +365,7 @@ class VGSLSpecs(object):
         depth = int(m.group(4))
         input_depth = shapes.tensor_dim(prev_layer, 1) * shapes.tensor_dim(
             prev_layer, 2) * shapes.tensor_dim(prev_layer, 3)
-        # The slim fully connected is actually a 1x1 conv, so we have to crush the
+        # The slim_raw fully connected is actually a 1x1 conv, so we have to crush the
         # dimensions on input.
         # Everything except batch goes to depth, and therefore has to be known.
         shaped = tf.reshape(

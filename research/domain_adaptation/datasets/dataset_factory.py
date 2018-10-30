@@ -42,7 +42,7 @@ def get_dataset(dataset_name,
         reader defined by each dataset is used.
   
     Returns:
-      A tf-slim `Dataset` class.
+      A tf-slim_raw `Dataset` class.
   
     Raises:
       ValueError: if `dataset_name` isn't recognized.

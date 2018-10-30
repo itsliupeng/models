@@ -56,7 +56,7 @@ used due to slim's internal averaging.
 
 ```bash
 --model_name="mobilenet_v2"
---learning_rate=0.045 * NUM_GPUS   #slim internally averages clones so we compensate
+--learning_rate=0.045 * NUM_GPUS   slim_raw
 --preprocessing_name="inception_v2"
 --label_smoothing=0.1
 --moving_average_decay=0.9999

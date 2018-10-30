@@ -48,7 +48,7 @@ your `PYTHONPATH`, as instructed
 ```bash
 git clone https://github.com/tensorflow/models
 
-# First, install slim's "nets" package.
+slim_raw
 cd models/research/slim/
 sudo pip install -e .
 

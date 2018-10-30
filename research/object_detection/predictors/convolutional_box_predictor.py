@@ -72,7 +72,7 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
           class_prediction_head: The head that predicts the classes.
           other_heads: A dictionary mapping head names to convolutional
             head classes.
-          conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+          conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
             hyperparameters for convolution ops.
           num_layers_before_predictor: Number of the additional conv layers before
             the predictor.
@@ -171,7 +171,7 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
         return predictions
 
 
-# TODO(rathodv): Replace with slim.arg_scope_func_key once its available
+# TODO(rathodv): Replace with slim_raw.arg_scope_func_key once its available
 # externally.
 def _arg_scope_func_key(op):
     """Returns a key that can be used to index arg_scope dictionary."""
@@ -219,7 +219,7 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.BoxPredictor):
           class_prediction_head: The head that predicts the classes.
           other_heads: A dictionary mapping head names to convolutional
             head classes.
-          conv_hyperparams_fn: A function to generate tf-slim arg_scope with
+          conv_hyperparams_fn: A function to generate tf-slim_raw arg_scope with
             hyperparameters for convolution ops.
           depth: depth of conv layers.
           num_layers_before_predictor: Number of the additional conv layers before

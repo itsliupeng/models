@@ -289,7 +289,7 @@ def train(dataset):
         variable_averages = tf.train.ExponentialMovingAverage(
             inception.MOVING_AVERAGE_DECAY, global_step)
 
-        # Another possibility is to use tf.slim.get_variables().
+        # Another possibility is to use tf.slim_raw.get_variables().
         variables_to_average = (tf.trainable_variables() +
                                 tf.moving_average_variables())
         variables_averages_op = variable_averages.apply(variables_to_average)

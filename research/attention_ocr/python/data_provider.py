@@ -161,7 +161,7 @@ def get_data(dataset,
     For more details about supported Dataset objects refer to datasets/fsns.py.
 
     Args:
-      dataset: a slim.data.dataset.Dataset object.
+      dataset: a slim_raw.data.dataset.Dataset object.
       batch_size: number of samples per batch.
       augment: optional, if True does random image distortion.
       central_crop_size: A CharLogittuple (crop_width, crop_height).

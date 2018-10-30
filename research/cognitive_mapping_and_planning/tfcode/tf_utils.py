@@ -23,7 +23,7 @@ from tensorflow.contrib import slim
 from tensorflow.contrib.slim import arg_scope
 from tensorflow.contrib.slim.nets import resnet_v2
 
-sys.path.insert(0, '../slim')
+sys.path.insert(0, '../slim_raw')
 from preprocessing import inception_preprocessing as ip
 
 resnet_v2_50 = resnet_v2.resnet_v2_50
@@ -762,7 +762,7 @@ def add_summary_ops(m, summarize_ops, summarize_names, to_aggregate=None,
         agg_ops = []
         for op, name, to_agg in zip(summarize_ops, summarize_names, to_aggregate):
             if to_agg:
-                # agg_ops.append(slim.metrics.streaming_mean(op, return_reset_op=True))
+                # agg_ops.append(slim_raw.metrics.streaming_mean(op, return_reset_op=True))
                 agg_ops.append(tf.contrib.metrics.streaming_mean(op))
                 # agg_ops.append(tf.contrib.metrics.streaming_mean(op, return_reset_op=True))
             else:

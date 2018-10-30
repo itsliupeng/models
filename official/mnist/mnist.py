@@ -97,6 +97,8 @@ def define_mnist_flags():
                             train_epochs=40)
 
 
+from nets import inception_v3
+
 def model_fn(features, labels, mode, params):
     """The model_fn argument for creating an Estimator."""
     model = create_model(params['data_format'])

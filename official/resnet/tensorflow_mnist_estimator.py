@@ -30,7 +30,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
-from official.resnet.slim import inception_model
+from official.resnet.slim_raw import inception_model
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook
 
 _DEFAULT_IMAGE_SIZE = 224

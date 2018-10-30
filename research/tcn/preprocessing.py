@@ -28,10 +28,10 @@ from tensorflow.python.ops import control_flow_ops
 def apply_with_random_selector(x, func, num_cases):
     """Computes func(x, sel), with sel sampled from [0...num_cases-1].
 
-    TODO(coreylynch): add as a dependency, when slim or tensorflow/models are
+    TODO(coreylynch): add as a dependency, when slim_raw or tensorflow/models are
     pipfied.
     Source:
-    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim/preprocessing/inception_preprocessing.py
+    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim_raw/preprocessing/inception_preprocessing.py
 
     Args:
       x: input Tensor.
@@ -57,10 +57,10 @@ def distorted_bounding_box_crop(image,
                                 scope=None):
     """Generates cropped_image using a one of the bboxes randomly distorted.
 
-    TODO(coreylynch): add as a dependency, when slim or tensorflow/models are
+    TODO(coreylynch): add as a dependency, when slim_raw or tensorflow/models are
     pipfied.
     Source:
-    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim/preprocessing/inception_preprocessing.py
+    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim_raw/preprocessing/inception_preprocessing.py
 
     See `tf.image.sample_distorted_bounding_box` for more documentation.
 
@@ -113,10 +113,10 @@ def distorted_bounding_box_crop(image,
 def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
     """Distort the color of a Tensor image.
 
-    TODO(coreylynch): add as a dependency, when slim or tensorflow/models are
+    TODO(coreylynch): add as a dependency, when slim_raw or tensorflow/models are
     pipfied.
     Source:
-    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim/preprocessing/inception_preprocessing.py
+    https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim_raw/preprocessing/inception_preprocessing.py
 
     Each color distortion is non-commutative and thus ordering of the color ops
     matters. Ideally we would randomly permute the ordering of the color ops.

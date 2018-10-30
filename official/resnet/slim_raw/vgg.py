@@ -27,10 +27,10 @@ More information can be obtained from the VGG website:
 www.robots.ox.ac.uk/~vgg/research/very_deep/
 
 Usage:
-  with slim.arg_scope(vgg.vgg_arg_scope()):
+  with slim_raw.arg_scope(vgg.vgg_arg_scope()):
     outputs, end_points = vgg.vgg_a(inputs)
 
-  with slim.arg_scope(vgg.vgg_arg_scope()):
+  with slim_raw.arg_scope(vgg.vgg_arg_scope()):
     outputs, end_points = vgg.vgg_16(inputs)
 
 @@vgg_a

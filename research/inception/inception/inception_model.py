@@ -98,7 +98,7 @@ def loss(logits, labels, batch_size=None):
     """Adds all losses for the model.
 
     Note the final loss is not returned. Instead, the list of losses are collected
-    by slim.losses. The losses are accumulated in tower_loss() and summed to
+    by slim_raw.losses. The losses are accumulated in tower_loss() and summed to
     calculate the total loss.
 
     Args:

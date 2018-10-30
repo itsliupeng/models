@@ -62,7 +62,7 @@ Banner () {
 }
 
 # Download the dataset.
-python "${git_repo}/research/slim/download_and_convert_data.py" \
+python "${git_repo}/research/slim_raw/download_and_convert_data.py" \
   --dataset_name=cifar10 \
   --dataset_dir=${DATASET_DIR}
 

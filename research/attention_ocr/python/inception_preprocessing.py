@@ -14,7 +14,7 @@
 # ==============================================================================
 """Provides utilities to preprocess images for the Inception networks."""
 
-# TODO(gorban): add as a dependency, when slim or tensorflow/models are pipfied
+# TODO(gorban): add as a dependency, when slim_raw or tensorflow/models are pipfied
 # Source:
 # https://raw.githubusercontent.com/tensorflow/models/a9d0e6e8923a4/slim/preprocessing/inception_preprocessing.py
 from __future__ import absolute_import

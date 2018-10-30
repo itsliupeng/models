@@ -20,8 +20,8 @@
 # 3. Evaluates the model on the Flowers validation set.
 #
 # Usage:
-# cd slim
-# ./slim/scripts/finetune_resnet_v1_50_on_flowers.sh
+# cd slim_raw
+# ./slim_raw/scripts/finetune_resnet_v1_50_on_flowers.sh
 set -e
 
 # Where the pre-trained ResNetV1-50 checkpoint is saved to.

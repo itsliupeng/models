@@ -27,7 +27,7 @@ def prefetch(tensor_dict, capacity):
 
     Example input pipeline when you don't need batching:
     ----------------------------------------------------
-    key, string_tensor = slim.parallel_reader.parallel_read(...)
+    key, string_tensor = slim_raw.parallel_reader.parallel_read(...)
     tensor_dict = decoder.decode(string_tensor)
     tensor_dict = preprocessor.preprocess(tensor_dict, ...)
     prefetch_queue = prefetcher.prefetch(tensor_dict, capacity=20)

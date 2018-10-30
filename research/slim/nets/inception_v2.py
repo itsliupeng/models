@@ -554,7 +554,7 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
 
     TODO(jrru): Make this function work with unknown shapes. Theoretically, this
     can be done with the code below. Problems are two-fold: (1) If the shape was
-    known, it will be lost. (2) inception.slim.ops._two_element_tuple cannot
+    known, it will be lost. (2) inception.slim_raw.ops._two_element_tuple cannot
     handle tensors that define the kernel size.
         shape = tf.shape(input_tensor)
         return = tf.stack([tf.minimum(shape[1], kernel_size[0]),

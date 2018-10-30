@@ -224,7 +224,7 @@ class BaseEstimator(object):
         Args:
           loss: A float32 `Tensor` representing the total training loss.
         Returns:
-          train_op: A slim.learning.create_train_op train_op.
+          train_op: A slim_raw.learning.create_train_op train_op.
         Raises:
           ValueError: If specified optimizer isn't supported.
         """

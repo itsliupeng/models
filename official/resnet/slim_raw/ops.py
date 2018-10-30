@@ -27,9 +27,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.resnet.slim import losses
-from official.resnet.slim import scopes
-from official.resnet.slim import variables
+from official.resnet.slim_raw import losses
+from official.resnet.slim_raw import scopes
+from official.resnet.slim_raw import variables
 from tensorflow.python.training import moving_averages
 
 # Used to keep the update ops done by batch_norm.

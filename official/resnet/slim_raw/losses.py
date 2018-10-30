@@ -30,7 +30,7 @@ import tensorflow as tf
 
 # In order to gather all losses in a network, the user should use this
 # key for get_collection, i.e:
-#   losses = tf.get_collection(slim.losses.LOSSES_COLLECTION)
+#   losses = tf.get_collection(slim_raw.losses.LOSSES_COLLECTION)
 LOSSES_COLLECTION = tf.GraphKeys.LOSSES
 
 

@@ -230,7 +230,7 @@ class FasterRCNNNASFeatureExtractor(
         hidden_previous, hidden = tf.split(proposal_feature_maps, 2, axis=3)
 
         # Note that what follows is largely a copy of build_nasnet_large() within
-        # nasnet.py. We are copying to minimize code pollution in slim.
+        # nasnet.py. We are copying to minimize code pollution in slim_raw.
 
         # TODO(shlens,skornblith): Determine the appropriate drop path schedule.
         # For now the schedule is the default (1.0->0.7 over 250,000 train steps).

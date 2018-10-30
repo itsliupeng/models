@@ -20,8 +20,8 @@
 # 3. Evaluates the model on the MNIST testing set.
 #
 # Usage:
-# cd slim
-# ./slim/scripts/train_lenet_on_mnist.sh
+# cd slim_raw
+# ./slim_raw/scripts/train_lenet_on_mnist.sh
 set -e
 
 # Where the checkpoint and logs will be saved to.

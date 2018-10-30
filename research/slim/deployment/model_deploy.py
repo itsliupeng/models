@@ -34,12 +34,12 @@ Usage:
 
   # Create the global step on the device storing the variables.
   with tf.device(config.variables_device()):
-    global_step = slim.create_global_step()
+    global_step = slim_raw.create_global_step()
 
   # Define the inputs
   with tf.device(config.inputs_device()):
     images, labels = LoadData(...)
-    inputs_queue = slim.data.prefetch_queue((images, labels))
+    inputs_queue = slim_raw.data.prefetch_queue((images, labels))
 
   # Define the optimizer.
   with tf.device(config.optimizer_device()):
@@ -49,13 +49,13 @@ Usage:
   def model_fn(inputs_queue):
     images, labels = inputs_queue.dequeue()
     predictions = CreateNetwork(images)
-    slim.losses.log_loss(predictions, labels)
+    slim_raw.losses.log_loss(predictions, labels)
 
   model_dp = model_deploy.deploy(config, model_fn, [inputs_queue],
                                  optimizer=optimizer)
 
   # Run training.
-  slim.learning.train(model_dp.train_op, my_log_dir,
+  slim_raw.learning.train(model_dp.train_op, my_log_dir,
                       summary_op=model_dp.summary_op)
 
 The Clone namedtuple holds together the values associated with each call to
@@ -164,7 +164,7 @@ def create_clones(config, model_fn, args=None, kwargs=None):
   
     If `config` specifies deployment on multiple replicas then the default
     tensorflow device is set appropriatly for each call to `model_fn` and for the
-    slim variable creation functions: model and global variables will be created
+    slim_raw variable creation functions: model and global variables will be created
     on the `ps` device, the clone operations will be on the `worker` device.
   
     Args:
@@ -327,7 +327,7 @@ def deploy(config,
   
     If `config` specifies deployment on multiple replicas then the default
     tensorflow device is set appropriatly for each call to `model_fn` and for the
-    slim variable creation functions: model and global variables will be created
+    slim_raw variable creation functions: model and global variables will be created
     on the `ps` device, the clone operations will be on the `worker` device.
   
     Args:

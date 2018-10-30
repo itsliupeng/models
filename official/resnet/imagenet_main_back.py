@@ -28,7 +28,7 @@ from absl import flags
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_run_loop
-from official.resnet.slim import inception_model
+from official.resnet.slim_raw import inception_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.misc import distribution_utils

@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Setup script for slim."""
+"""Setup script for slim_raw."""
 
 from setuptools import find_packages
 from setuptools import setup
 
 setup(
-    name='slim',
+    name='slim_raw',
     version='0.1',
     include_package_data=True,
     packages=find_packages(),
-    description='tf-slim',
+    description='tf-slim_raw',
 )

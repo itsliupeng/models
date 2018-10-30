@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for slim.inception."""
+"""Tests for slim_raw.inception."""
 
 from __future__ import absolute_import
 from __future__ import division

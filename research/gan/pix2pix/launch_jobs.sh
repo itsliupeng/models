@@ -58,7 +58,7 @@ Banner () {
 }
 
 # Download the dataset.
-bazel build "${git_repo}/research/slim:download_and_convert_imagenet"
+bazel build "${git_repo}/research/slim_raw:download_and_convert_imagenet"
 "./bazel-bin/download_and_convert_imagenet" ${DATASET_DIR}
 
 # Run the pix2pix model.

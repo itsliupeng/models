@@ -26,7 +26,7 @@ Here we provide the implementation proposed in "One weird trick" and not
 "ImageNet Classification", as per the paper, the LRN layers have been removed.
 
 Usage:
-  with slim.arg_scope(alexnet.alexnet_v2_arg_scope()):
+  with slim_raw.arg_scope(alexnet.alexnet_v2_arg_scope()):
     outputs, end_points = alexnet.alexnet_v2(inputs)
 
 @@alexnet_v2

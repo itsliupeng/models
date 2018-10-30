@@ -24,7 +24,7 @@ class IdentityContextManager(object):
 
     This is helpful in setting up conditional `with` statement as below:
 
-    with slim.arg_scope(x) if use_slim_scope else IdentityContextManager():
+    with slim_raw.arg_scope(x) if use_slim_scope else IdentityContextManager():
       do_stuff()
 
     """

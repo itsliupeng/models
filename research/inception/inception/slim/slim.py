@@ -15,4 +15,4 @@
 """TF-Slim grouped API. Please see README.md for details and usage."""
 # pylint: disable=unused-import
 
-# Collapse tf-slim into a single namespace.
+# Collapse tf-slim_raw into a single namespace.

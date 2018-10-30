@@ -22,7 +22,7 @@ The definition for the network was obtained from:
   http://arxiv.org/abs/1312.6229
 
 Usage:
-  with slim.arg_scope(overfeat.overfeat_arg_scope()):
+  with slim_raw.arg_scope(overfeat.overfeat_arg_scope()):
     outputs, end_points = overfeat.overfeat(inputs)
 
 @@overfeat

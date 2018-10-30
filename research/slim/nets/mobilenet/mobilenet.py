@@ -125,7 +125,7 @@ class NoOpScope(object):
 
 
 def safe_arg_scope(funcs, **kwargs):
-    """Returns `slim.arg_scope` with all None arguments removed.
+    """Returns `slim_raw.arg_scope` with all None arguments removed.
 
     Arguments:
       funcs: Functions to pass to `arg_scope`.
@@ -161,7 +161,7 @@ def mobilenet_base(  # pylint: disable=invalid-name
     the network is constructed in inference mode. To create network
     in training mode use:
 
-    with slim.arg_scope(mobilenet.training_scope()):
+    with slim_raw.arg_scope(mobilenet.training_scope()):
        logits, endpoints = mobilenet_base(...)
 
     Args:
@@ -195,7 +195,7 @@ def mobilenet_base(  # pylint: disable=invalid-name
         training_scope(is_training=...). It is also safe to explicitly set
         it to False, even if there is outer training_scope set to to training.
         (The network will be built in inference mode). If this is set to None,
-        no arg_scope is added for slim.batch_norm's is_training parameter.
+        no arg_scope is added for slim_raw.batch_norm's is_training parameter.
 
     Returns:
       tensor_out: output tensor.
@@ -420,7 +420,7 @@ def training_scope(is_training=True,
     """Defines Mobilenet training scope.
 
     Usage:
-       with tf.contrib.slim.arg_scope(mobilenet.training_scope()):
+       with tf.contrib.slim_raw.arg_scope(mobilenet.training_scope()):
          logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
        # the network created will be trainble with dropout/batch norm

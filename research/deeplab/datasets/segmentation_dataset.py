@@ -123,7 +123,7 @@ def get_cityscapes_dataset_name():
 
 
 def get_dataset(dataset_name, split_name, dataset_dir):
-    """Gets an instance of slim Dataset.
+    """Gets an instance of slim_raw Dataset.
 
     Args:
       dataset_name: Dataset name.
@@ -131,7 +131,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       dataset_dir: The directory of the dataset sources.
 
     Returns:
-      An instance of slim Dataset.
+      An instance of slim_raw Dataset.
 
     Raises:
       ValueError: if the dataset_name or split_name is not recognized.

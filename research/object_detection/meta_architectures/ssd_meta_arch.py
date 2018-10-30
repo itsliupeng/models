@@ -54,7 +54,7 @@ class SSDFeatureExtractor(object):
           min_depth: minimum feature extractor depth.
           pad_to_multiple: the nearest multiple to zero pad the input height and
             width dimensions to.
-          conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+          conv_hyperparams_fn: A function to construct tf slim_raw arg_scope for conv2d
             and separable_conv2d ops in the layers that are added on top of the
             base feature extractor.
           reuse_weights: whether to reuse variables. Default is None.

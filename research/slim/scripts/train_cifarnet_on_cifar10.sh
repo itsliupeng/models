@@ -20,7 +20,7 @@
 # 3. Evaluates the model on the Cifar10 testing set.
 #
 # Usage:
-# cd slim
+# cd slim_raw
 # ./scripts/train_cifarnet_on_cifar10.sh
 set -e
 

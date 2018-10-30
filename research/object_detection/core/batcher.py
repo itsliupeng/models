@@ -32,7 +32,7 @@ class BatchQueue(object):
 
     Example input pipeline with batching:
     ------------------------------------
-    key, string_tensor = slim.parallel_reader.parallel_read(...)
+    key, string_tensor = slim_raw.parallel_reader.parallel_read(...)
     tensor_dict = decoder.decode(string_tensor)
     tensor_dict = preprocessor.preprocess(tensor_dict, ...)
     batch_queue = batcher.BatchQueue(tensor_dict,

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for slim.nets.resnet_v1."""
+"""Tests for slim_raw.nets.resnet_v1."""
 
 from __future__ import absolute_import
 from __future__ import division
