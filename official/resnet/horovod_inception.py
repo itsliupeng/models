@@ -30,7 +30,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
 # bypass temp bug
-imagenet_preprocessing._RESIZE_MIN = 299
+imagenet_preprocessing._RESIZE_MIN = 310
 
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
