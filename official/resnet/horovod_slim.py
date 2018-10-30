@@ -209,9 +209,9 @@ def cnn_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     momentum = 0.9
 
-    from official.resnet import resnet_model
-    model = resnet_model.ResNet(resnet_size=50)
-    logits = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
+    from official.resnet.slim.nets import nets_factory
+    model = nets_factory.get_network_fn('resnet_v1_50', 1001, weight_decay=weight_decay, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    logits, end_points = model(features, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     logits = tf.cast(logits, tf.float32)
 
