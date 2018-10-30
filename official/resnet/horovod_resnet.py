@@ -337,7 +337,7 @@ def main(unused_argv):
         return input_fn(
             is_training=False, data_dir=flags_obj.data_dir,
             batch_size=flags_obj.batch_size,
-            num_epochs=1, num_shards=hvd.size(), shard_index=hvd.rank())
+            num_epochs=1)
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
