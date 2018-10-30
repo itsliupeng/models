@@ -349,10 +349,11 @@ def main(unused_argv):
     init_hooks = BroadcastGlobalVariablesHook(0)
 
     if flags_obj.evaluate:
-        lp_debug('begin evaluate')
-        eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
-        lp_debug(eval_results)
-        lp_debug('end evaluate')
+        if hvd.rank() == 0:
+            lp_debug('begin evaluate')
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+            lp_debug(eval_results)
+            lp_debug('end evaluate')
         return
 
 
