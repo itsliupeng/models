@@ -29,6 +29,9 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
+# bypass temp bug
+imagenet_preprocessing._RESIZE_MIN = 299
+
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
     AllReduceTensorHook
@@ -248,11 +251,12 @@ def cnn_model_fn(features, labels, mode, params):
     tf.identity(l2_loss, 'l2_loss')
     tf.identity(loss, name='loss')
     tf.identity(cross_entropy, name='cross_entropy')
-    tf.identity(aux_logits, name='aux_logits')
+    tf.identity(aux_loss, name='aux_loss')
 
     if hvd.rank() == 0:
         tf.summary.scalar('cross_entropy', cross_entropy)
         tf.summary.scalar('l2_loss', l2_loss)
+        tf.summary.scalar('aux_loss', aux_loss)
 
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         lp_debug_rank0('regularization_losses size {}: {}'.format(len(regularization_losses), regularization_losses))
@@ -348,7 +352,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
