@@ -227,7 +227,7 @@ def cnn_model_fn(features, labels, mode, params):
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
     def exclude_batch_norm(name):
-        return 'batch_normalization' not in name
+        return 'batch_normalization' not in name or 'BatchNorm' not in name
 
     trainable_variables = tf.trainable_variables()
     trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
@@ -277,7 +277,7 @@ def cnn_model_fn(features, labels, mode, params):
 
         tf.identity(learning_rate, name='learning_rate')
 
-        lp_debug_rank0('update_ops size {update_ops}: {}'.format(len(update_ops), update_ops))
+        lp_debug_rank0('update_ops size {}: {}'.format(len(update_ops), update_ops))
 
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
