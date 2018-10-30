@@ -212,8 +212,10 @@ def cnn_model_fn(features, labels, mode, params):
     from official.resnet.slim.nets import nets_factory
     model = nets_factory.get_network_fn('inception_v3', 1001, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
+    aux_logits = end_points['AuxLogits']
 
     logits = tf.cast(logits, tf.float32)
+    aux_logits = tf.cast(aux_logits, tf.float32)
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
@@ -226,6 +228,8 @@ def cnn_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
+    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
+
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name and 'BatchNorm' not in name
 
@@ -239,11 +243,12 @@ def cnn_model_fn(features, labels, mode, params):
 
     # Add weight decay to the loss.
     l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
-    loss = cross_entropy + l2_loss
+    loss = cross_entropy + aux_loss + l2_loss
 
     tf.identity(l2_loss, 'l2_loss')
     tf.identity(loss, name='loss')
     tf.identity(cross_entropy, name='cross_entropy')
+    tf.identity(aux_logits, name='aux_logits')
 
     if hvd.rank() == 0:
         tf.summary.scalar('cross_entropy', cross_entropy)
