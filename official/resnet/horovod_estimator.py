@@ -160,7 +160,7 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
         if self._summary_writer is not None:
             if self._total_bach_size:
                 image_tag = 'images/sec'
-                image_count = steps_per_sec * self._total_bach_size
+                image_count = float(steps_per_sec) * self._total_bach_size
                 summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
                                          Summary.Value(tag=image_tag, simple_value=image_count)])
                 logging.info("%s: %g, %s: %g", self._summary_tag, steps_per_sec, image_tag, image_count)
@@ -349,7 +349,7 @@ class HorovodEstimator(estimator.Estimator):
             worker_hooks.extend(input_hooks)
             estimator_spec = self._call_model_fn(features, labels, model_fn_lib.ModeKeys.TRAIN, self.config)
             global_step_tensor = training_util.get_global_step(g)
-            total_batch_size = features.shape[0] * hvd.size()
+            total_batch_size = int(features.shape[0]) * hvd.size()
             return self._train_with_estimator_spec(estimator_spec, worker_hooks,
                                                    hooks, global_step_tensor,
                                                    saving_listeners, total_batch_size)
