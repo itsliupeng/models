@@ -208,7 +208,7 @@ def cnn_model_fn(features, labels, mode, params):
     momentum = 0.9
 
     from official.resnet.slim.nets import nets_factory
-    model = nets_factory.get_network_fn('inception_v3', 1001, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    model = nets_factory.get_network_fn('inception_v3', flags_obj.num_class, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
     aux_logits = end_points['AuxLogits']
 
