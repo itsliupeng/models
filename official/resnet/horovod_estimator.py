@@ -487,7 +487,9 @@ class HorovodEstimator(estimator.Estimator):
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
                 save_summaries_steps=self._config.save_summary_steps,
                 config=self._session_config,
-                log_step_count_steps=log_step_count_steps) as mon_sess:
+                log_step_count_steps=log_step_count_steps,
+                features=features,
+                labels=labels) as mon_sess:
             loss = None
             while not mon_sess.should_stop():
                 _, loss = mon_sess.run([estimator_spec.train_op, estimator_spec.loss])
