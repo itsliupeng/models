@@ -29,13 +29,14 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
-imagenet_preprocessing._RESIZE_MIN = 256
+# bypass temp bug
+imagenet_preprocessing._RESIZE_MIN = 320
 
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
     AllReduceTensorHook
 
-_DEFAULT_IMAGE_SIZE = 224
+_DEFAULT_IMAGE_SIZE = 299
 _NUM_CHANNELS = 3
 _NUM_CLASSES = 1001
 
@@ -207,19 +208,25 @@ def cnn_model_fn(features, labels, mode, params):
     momentum = 0.9
 
     from official.resnet.slim.nets import nets_factory
-    model = nets_factory.get_network_fn('resnet_v1_50', flags_obj.num_class, weight_decay=weight_decay, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    model = nets_factory.get_network_fn('inception_v3', 1001, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
+    aux_logits = end_points['AuxLogits']
 
     logits = tf.cast(logits, tf.float32)
+    aux_logits = tf.cast(aux_logits, tf.float32)
 
     predictions = {
+        # Generate predictions (for PREDICT and EVAL mode)
         "classes": tf.argmax(input=logits, axis=1),
+        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
+        # `logging_hook`.
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
     }
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
+    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
 
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name and 'BatchNorm' not in name
@@ -228,24 +235,26 @@ def cnn_model_fn(features, labels, mode, params):
     trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
     global_variables = tf.global_variables()
 
-    lp_debug_rank0('global_variables size {}'.format(len(global_variables)))
-    lp_debug_rank0('trainable_variables size {}'.format(len(trainable_variables)))
-    lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
+    lp_debug_rank0('global_variables {}: {}'.format(len(global_variables), global_variables))
+    lp_debug_rank0('trainable_variables {}: {}'.format(len(trainable_variables), trainable_variables))
+    lp_debug_rank0('trainable_variables_without_bn size {}: {}'.format(len(trainable_variables_without_bn), trainable_variables_without_bn))
 
     # Add weight decay to the loss.
     l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
-    loss = cross_entropy + l2_loss
+    loss = cross_entropy + aux_loss + l2_loss
 
     tf.identity(l2_loss, 'l2_loss')
     tf.identity(loss, name='loss')
     tf.identity(cross_entropy, name='cross_entropy')
+    tf.identity(aux_loss, name='aux_loss')
 
     if hvd.rank() == 0:
         tf.summary.scalar('cross_entropy', cross_entropy)
         tf.summary.scalar('l2_loss', l2_loss)
+        tf.summary.scalar('aux_loss', aux_loss)
 
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
+        lp_debug_rank0('regularization_losses size {}: {}'.format(len(regularization_losses), regularization_losses))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -253,6 +262,7 @@ def cnn_model_fn(features, labels, mode, params):
     tf.identity(accuracy[1], name='train_accuracy')
     tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
 
+    # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
 
@@ -262,16 +272,21 @@ def cnn_model_fn(features, labels, mode, params):
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
+
+            # lp: do reduce
             avg_grad_vars = optimizer.compute_gradients(loss)
             minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
 
         train_op = tf.group(minimize_op, update_ops)
 
         tf.identity(learning_rate, name='learning_rate')
-        lp_debug_rank0('update_ops size {}'.format(len(update_ops)))
+
+        lp_debug_rank0('update_ops size {}: {}'.format(len(update_ops), update_ops))
 
         if hvd.rank() == 0:
+            # Create a tensor named learning_rate for logging purposes
             tf.summary.scalar('learning_rate', learning_rate)
+            # Create a tensor named train_accuracy for logging purposes
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
@@ -289,25 +304,33 @@ def cnn_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
+    # Horovod: initialize Horovod.
     hvd.init()
 
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
+    # Create session config based on values of inter_op_parallelism_threads and
+    # intra_op_parallelism_threads. Note that we default to having
+    # allow_soft_placement = True, which is required for multi-GPU and not
+    # harmful for other modes.
     session_config = tf.ConfigProto(
         inter_op_parallelism_threads=8,
         intra_op_parallelism_threads=4,
         allow_soft_placement=True)
 
+
+    # Horovod: pin GPU to be used to process local rank (one GPU per process)
     session_config.gpu_options.allow_growth = True
     session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 50, 60, 65, 70],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4, 1e-5], warmup=True, base_lr=.128*0.6)
+        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128*0.6)
 
-    model_dir = './model_dir' if hvd.rank() == 0 else None
+    model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
 
+    # Create the tf.estimator
     classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
@@ -324,7 +347,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
@@ -336,6 +359,7 @@ def main(unused_argv):
             lp_debug(eval_results)
             lp_debug('end evaluate')
         return
+
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
@@ -366,8 +390,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', help='', type=str, default='/multiGPU/imagenet_tfrecord')
-    parser.add_argument('--batch_size', help='', type=int, default=256)
+    parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
+    parser.add_argument('--batch_size', help='', type=int, default=32)
     parser.add_argument('--train_epochs', help='', type=int, default=90)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
