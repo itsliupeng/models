@@ -152,7 +152,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
     def __init__(self, total_batch_size, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
-        super(self, ImageCounterHook).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
+        super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
         self._total_bach_size = total_batch_size
 
     def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
