@@ -21,6 +21,7 @@ from tensorflow.python.training.session_run_hook import SessionRunArgs
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.eager import context
 from tensorflow.python.estimator import run_config
+from tensorflow.core.framework.summary_pb2 import Summary
 
 import horovod.tensorflow as hvd
 
@@ -149,6 +150,27 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
             self._summary(avg_values, global_step)
 
 
+class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
+    def __init__(self, total_batch_size, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
+        super(self, ImageCounterHook).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
+        self._total_bach_size = total_batch_size
+
+    def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
+        steps_per_sec = elapsed_steps / elapsed_time
+        if self._summary_writer is not None:
+            if self._total_bach_size:
+                image_tag = 'images/sec'
+                image_count = steps_per_sec * self._total_bach_size
+                summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
+                                         Summary.Value(tag=image_tag, simple_value=image_count)])
+                logging.info("%s: %g, %s: %g", self._summary_tag, steps_per_sec, image_tag, image_count)
+            else:
+                summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec)])
+                logging.info("%s: %g", self._summary_tag, steps_per_sec)
+
+            self._summary_writer.add_summary(summary, global_step)
+
+
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,
                              checkpoint_dir=None,
@@ -162,7 +184,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              stop_grace_period_secs=120,
                              log_step_count_steps=100,
                              save_checkpoint_steps=USE_DEFAULT,
-                             summary_dir=None):
+                             summary_dir=None,
+                             total_batch_size=None):
     if save_summaries_steps == USE_DEFAULT and save_summaries_secs == USE_DEFAULT:
         save_summaries_steps = 100
         save_summaries_secs = None
@@ -196,9 +219,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     summary_dir = summary_dir or checkpoint_dir
     if summary_dir:
         if log_step_count_steps and log_step_count_steps > 0:
-            all_hooks.append(
-                basic_session_run_hooks.StepCounterHook(
-                    output_dir=summary_dir, every_n_steps=log_step_count_steps))
+            all_hooks.append(ImageCounterHook(total_batch_size, every_n_steps=log_step_count_steps, output_dir=summary_dir))
 
         if (save_summaries_steps and save_summaries_steps > 0) or (
                 save_summaries_secs and save_summaries_secs > 0):
@@ -328,11 +349,12 @@ class HorovodEstimator(estimator.Estimator):
             worker_hooks.extend(input_hooks)
             estimator_spec = self._call_model_fn(features, labels, model_fn_lib.ModeKeys.TRAIN, self.config)
             global_step_tensor = training_util.get_global_step(g)
+            total_batch_size = features.shape[0] * hvd.size()
             return self._train_with_estimator_spec(estimator_spec, worker_hooks,
                                                    hooks, global_step_tensor,
-                                                   saving_listeners)
+                                                   saving_listeners, total_batch_size)
 
-    def _train_with_estimator_spec(self, estimator_spec, worker_hooks, hooks, global_step_tensor, saving_listeners):
+    def _train_with_estimator_spec(self, estimator_spec, worker_hooks, hooks, global_step_tensor, saving_listeners, total_batch_size):
         """Train a model with the given Estimator Spec."""
         if self._warm_start_settings:
             logging.info('Warm-starting with WarmStartSettings: %s' % (self._warm_start_settings,))
@@ -377,8 +399,7 @@ class HorovodEstimator(estimator.Estimator):
 
         chief_hooks = []
         all_hooks = worker_hooks + list(estimator_spec.training_chief_hooks)
-        saver_hooks = [
-            h for h in all_hooks if isinstance(h, training.CheckpointSaverHook)]
+        saver_hooks = [h for h in all_hooks if isinstance(h, training.CheckpointSaverHook)]
         if (self._config.save_checkpoints_secs or
                 self._config.save_checkpoints_steps):
             if not saver_hooks:
@@ -420,7 +441,8 @@ class HorovodEstimator(estimator.Estimator):
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
                 save_summaries_steps=self._config.save_summary_steps,
                 config=self._session_config,
-                log_step_count_steps=log_step_count_steps) as mon_sess:
+                log_step_count_steps=log_step_count_steps,
+                total_batch_size=total_batch_size) as mon_sess:
             loss = None
             while not mon_sess.should_stop():
                 _, loss = mon_sess.run([estimator_spec.train_op, estimator_spec.loss])
