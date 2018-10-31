@@ -328,7 +328,7 @@ def main(unused_argv):
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128*0.6)
 
-    model_dir = './mnist_convnet_model' if hvd.rank() == 0 else None
+    model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
     # Create the tf.estimator
     classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
@@ -397,6 +397,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--num_class', help='', type=int, default=1001)
+    parser.add_argument('--model_dir', help='', type=str, default='model_dir')
 
     flags_obj = parser.parse_args()
 
