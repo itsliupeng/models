@@ -250,7 +250,7 @@ def cnn_model_fn(features, labels, mode, params):
         tf.summary.scalar('l2_loss', l2_loss)
 
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        lp_debug_rank0('regularization_losses size {}: {}'.format(len(regularization_losses), regularization_losses))
+        lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -273,7 +273,7 @@ def cnn_model_fn(features, labels, mode, params):
         train_op = tf.group(minimize_op, update_ops)
 
         tf.identity(learning_rate, name='learning_rate')
-        lp_debug_rank0('update_ops size {}: {}'.format(len(update_ops), update_ops))
+        lp_debug_rank0('update_ops size {}'.format(len(update_ops)))
 
         if hvd.rank() == 0:
             tf.summary.scalar('learning_rate', learning_rate)
