@@ -157,7 +157,7 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
         self._labels = labels
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        return SessionRunArgs((self._global_step_tensor, self._features))
+        return SessionRunArgs({'global_step': self._global_step_tensor, 'features': self._features})
 
     def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
         steps_per_sec = elapsed_steps / elapsed_time
@@ -177,7 +177,8 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
     def after_run(self, run_context, run_values):
         _ = run_context
 
-        stale_global_step, features = run_values.results
+        stale_global_step = run_values.results['global_step']
+        features = run_values.results['features']
 
         self._total_bach_size = features.shape[0] * hvd.size()
 
