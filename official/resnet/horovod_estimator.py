@@ -151,9 +151,13 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 
 class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
-    def __init__(self, total_batch_size, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
+    def __init__(self, features, labels, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
         super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
-        self._total_bach_size = total_batch_size
+        self._features = features
+        self._labels = labels
+
+    def before_run(self, run_context):  # pylint: disable=unused-argument
+        return SessionRunArgs((self._global_step_tensor, self._features))
 
     def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
         steps_per_sec = elapsed_steps / elapsed_time
@@ -170,6 +174,47 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
 
             self._summary_writer.add_summary(summary, global_step)
 
+    def after_run(self, run_context, run_values):
+        _ = run_context
+
+        stale_global_step, features = run_values.results
+
+        self._total_bach_size = features.shape[0] * hvd.size()
+
+        if self._timer.should_trigger_for_step(
+                stale_global_step + self._steps_per_run):
+            # get the real value after train op.
+            global_step = run_context.session.run(self._global_step_tensor)
+            if self._timer.should_trigger_for_step(global_step):
+                elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+                    global_step)
+                if elapsed_time is not None:
+                    self._log_and_record(elapsed_steps, elapsed_time, global_step)
+
+        # Check whether the global step has been increased. Here, we do not use the
+        # timer.last_triggered_step as the timer might record a different global
+        # step value such that the comparison could be unreliable. For simplicity,
+        # we just compare the stale_global_step with previously recorded version.
+        if stale_global_step == self._last_global_step:
+            # Here, we use a counter to count how many times we have observed that the
+            # global step has not been increased. For some Optimizers, the global step
+            # is not increased each time by design. For example, SyncReplicaOptimizer
+            # doesn't increase the global step in worker's main train step.
+            self._global_step_check_count += 1
+            if self._global_step_check_count % 20 == 0:
+                self._global_step_check_count = 0
+                logging.warning(
+                    "It seems that global step (tf.train.get_global_step) has not "
+                    "been increased. Current value (could be stable): %s vs previous "
+                    "value: %s. You could increase the global step by passing "
+                    "tf.train.get_global_step() to Optimizer.apply_gradients or "
+                    "Optimizer.minimize.", stale_global_step, self._last_global_step)
+        else:
+            # Whenever we observe the increment, reset the counter.
+            self._global_step_check_count = 0
+
+        self._last_global_step = stale_global_step
+
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,
@@ -185,7 +230,8 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              log_step_count_steps=100,
                              save_checkpoint_steps=USE_DEFAULT,
                              summary_dir=None,
-                             total_batch_size=None):
+                             features=None,
+                             labels=None):
     if save_summaries_steps == USE_DEFAULT and save_summaries_secs == USE_DEFAULT:
         save_summaries_steps = 100
         save_summaries_secs = None
@@ -219,7 +265,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     summary_dir = summary_dir or checkpoint_dir
     if summary_dir:
         if log_step_count_steps and log_step_count_steps > 0:
-            all_hooks.append(ImageCounterHook(total_batch_size, every_n_steps=log_step_count_steps, output_dir=summary_dir))
+            all_hooks.append(ImageCounterHook(features, labels, every_n_steps=log_step_count_steps, output_dir=summary_dir))
 
         if (save_summaries_steps and save_summaries_steps > 0) or (
                 save_summaries_secs and save_summaries_secs > 0):
@@ -349,12 +395,11 @@ class HorovodEstimator(estimator.Estimator):
             worker_hooks.extend(input_hooks)
             estimator_spec = self._call_model_fn(features, labels, model_fn_lib.ModeKeys.TRAIN, self.config)
             global_step_tensor = training_util.get_global_step(g)
-            total_batch_size = int(features.shape[0]) * hvd.size()
             return self._train_with_estimator_spec(estimator_spec, worker_hooks,
                                                    hooks, global_step_tensor,
-                                                   saving_listeners, total_batch_size)
+                                                   saving_listeners, features, labels)
 
-    def _train_with_estimator_spec(self, estimator_spec, worker_hooks, hooks, global_step_tensor, saving_listeners, total_batch_size):
+    def _train_with_estimator_spec(self, estimator_spec, worker_hooks, hooks, global_step_tensor, saving_listeners, features, labels):
         """Train a model with the given Estimator Spec."""
         if self._warm_start_settings:
             logging.info('Warm-starting with WarmStartSettings: %s' % (self._warm_start_settings,))
@@ -441,8 +486,7 @@ class HorovodEstimator(estimator.Estimator):
                 save_checkpoint_secs=0,  # Saving is handled by a hook.
                 save_summaries_steps=self._config.save_summary_steps,
                 config=self._session_config,
-                log_step_count_steps=log_step_count_steps,
-                total_batch_size=total_batch_size) as mon_sess:
+                log_step_count_steps=log_step_count_steps) as mon_sess:
             loss = None
             while not mon_sess.should_stop():
                 _, loss = mon_sess.run([estimator_spec.train_op, estimator_spec.loss])
