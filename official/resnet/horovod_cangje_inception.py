@@ -237,9 +237,9 @@ def cnn_model_fn(features, labels, mode, params):
     trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
     global_variables = tf.global_variables()
 
-    lp_debug_rank0('global_variables {}: {}'.format(len(global_variables), global_variables))
-    lp_debug_rank0('trainable_variables {}: {}'.format(len(trainable_variables), trainable_variables))
-    lp_debug_rank0('trainable_variables_without_bn size {}: {}'.format(len(trainable_variables_without_bn), trainable_variables_without_bn))
+    lp_debug_rank0('global_variables {}'.format(len(global_variables)))
+    lp_debug_rank0('trainable_variables {}'.format(len(trainable_variables)))
+    lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
 
     # Add weight decay to the loss.
     l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
@@ -256,7 +256,7 @@ def cnn_model_fn(features, labels, mode, params):
         tf.summary.scalar('aux_loss', aux_loss)
 
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        lp_debug_rank0('regularization_losses size {}: {}'.format(len(regularization_losses), regularization_losses))
+        lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -283,7 +283,7 @@ def cnn_model_fn(features, labels, mode, params):
 
         tf.identity(learning_rate, name='learning_rate')
 
-        lp_debug_rank0('update_ops size {}: {}'.format(len(update_ops), update_ops))
+        lp_debug_rank0('update_ops size {}'.format(len(update_ops)))
 
         if hvd.rank() == 0:
             # Create a tensor named learning_rate for logging purposes
@@ -309,7 +309,7 @@ def cnn_model_fn(features, labels, mode, params):
                 if not excluded:
                     variables_to_restore.append(var)
 
-            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables())), len(variables_to_restore), variables_to_restore)
+            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables()), len(variables_to_restore), variables_to_restore))
 
             scanfold._saver = tf.train.Saver(var_list=variables_to_restore, filename=flags_obj.pretrained_model_path)
 
