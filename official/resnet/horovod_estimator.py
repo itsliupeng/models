@@ -52,7 +52,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
     training is started with random weights or restored from a checkpoint.
     """
 
-    def __init__(self, root_rank, pretrained_model_path=None, device=''):
+    def __init__(self, root_rank, pretrained_model_path=None, exclusions=[], device=''):
         """Construct a new BroadcastGlobalVariablesHook that will broadcast all
         global variables from root rank to all other processes during initialization.
 
@@ -69,6 +69,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         self.device = device
         self._pretrained_model_path = pretrained_model_path
         self._saver = None
+        self._exclusions = exclusions
 
     def begin(self):
         if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
@@ -77,12 +78,11 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
 
         if self._pretrained_model_path and hvd.rank() == 0:
             # exclusions = nets_factory.exclusion_for_training['inception_v3']
-            exclusions = []
 
             variables_to_restore = []
             for var in tf.model_variables():
                 excluded = False
-                for exclusion in exclusions:
+                for exclusion in self._exclusions:
                     if var.op.name.startswith(exclusion):
                         excluded = True
                         break

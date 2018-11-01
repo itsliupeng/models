@@ -29,7 +29,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
 
-from tensorflow.contrib import slim
+from official.resnet.slim.nets import nets_factory
 from official.resnet import imagenet_preprocessing
 # bypass temp bug
 imagenet_preprocessing._RESIZE_MIN = 320
@@ -209,7 +209,6 @@ def cnn_model_fn(features, labels, mode, params):
     weight_decay = 1e-4
     momentum = 0.9
 
-    from official.resnet.slim.nets import nets_factory
     model = nets_factory.get_network_fn('inception_v3', flags_obj.num_class, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
     aux_logits = end_points['AuxLogits']
@@ -328,7 +327,7 @@ def main(unused_argv):
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
         num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=.128*0.6)
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
@@ -353,7 +352,8 @@ def main(unused_argv):
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
-    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path)
+    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
+                                                      exclusions=nets_factory.exclusion_for_training['inception_v3'])
 
     if flags_obj.evaluate:
         if hvd.rank() == 0:
@@ -405,6 +405,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_class', help='', type=int, default=1001)
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--pretrained_model_path', help='', type=str)
+    parser.add_argument('--base_lr', help='', type=float, default=.128*0.6)
 
     flags_obj = parser.parse_args()
 
