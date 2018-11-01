@@ -108,6 +108,36 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'se_resnet_v1_50': se_resnet_v1.resnet_arg_scope
                   }
 
+exclusion_for_training = {'vgg_16': ['vgg_16/fc8'],
+                          'vgg_19': ['vgg_19/fc8'],
+                          'inception_v1': ['InceptionV1/Logits'],
+                          'inception_v2': ['InceptionV2/Logits'],
+                          'inception_v3': ['InceptionV3/Logits', 'InceptionV3/AuxLogits'],
+                          'inception_v3_base': ['InceptionV3/Logits', 'InceptionV3/AuxLogits', '_Logits'],
+                          'inception_v3_attention': ['InceptionV3/Logits', 'InceptionV3/AuxLogits'],
+                          'inception_v3_attention_base': ['_Logits', 'InceptionV3/Attention'],
+                          'inception_v3_vlad': ['InceptionV3/Logits', 'InceptionV3/AuxLogits',
+                                                'InceptionV3/Mixed_7c', 'InceptionV3/VLAD'],
+                          'inception_v3_vlad_old': ['InceptionV3/Logits', 'InceptionV3/AuxLogits',
+                                                'InceptionV3/Mixed_7c', 'InceptionV3/VLAD'],
+                          'inception_branches': ['InceptionV3/Logits', 'InceptionV3/AuxLogits',
+                                                 'InceptionV3/ReduceDimension'],
+                          'inception_v4': ['InceptionV4/Logits', 'InceptionV4/AuxLogits'],
+                          'inception_v5': ['InceptionV3/Logits', 'InceptionV3/AuxLogits',
+                                           'InceptionV3/Conv2d_1a_3x3'],
+                          'inception_resnet_v2': ['InceptionResnetV2/Logits',
+                                                  'InceptionResnetV2/AuxLogits'],
+                          'resnet_v1_50': ['resnet_v1_50/logits'],
+                          'resnet_v1_101': ['resnet_v1_101/logits'],
+                          'resnet_v1_152': ['resnet_v1_152/logits'],
+                          'resnet_v2_50': ['resnet_v2_50/logits'],
+                          'resnet_v2_101': ['resnet_v2_101/logits'],
+                          'resnet_v2_152': ['resnet_v2_152/logits'],
+                          'se_resnet_v1_50': ['se_resnet_v1_50/logits'],
+                          'mobilenet_v1': ['MobilenetV1/Logits'],
+                          'nasnet_large':['final_layer', 'aux_11'],
+                          }
+
 
 def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
     """Returns a network_fn such as `logits, end_points = network_fn(images)`.

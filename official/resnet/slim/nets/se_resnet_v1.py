@@ -275,7 +275,7 @@ def resnet_v1_50(inputs,
                  depth_multiplier=1.0,
                  spatial_squeeze=True,
                  reuse=None,
-                 scope='resnet_v1_50'):
+                 scope='se_resnet_v1'):
   """ResNet-50 model of [1]. See resnet_v1() for arg and return description."""
   blocks = [
       resnet_v1_block('block1', base_depth=64, num_units=3, stride=2),
@@ -284,7 +284,7 @@ def resnet_v1_50(inputs,
       resnet_v1_block('block4', base_depth=512, num_units=3, stride=1),
   ]
   if not scope:
-      scope='resnet_v1_50'
+      scope='se_resnet_v1'
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, spatial_squeeze=spatial_squeeze,

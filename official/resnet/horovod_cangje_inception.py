@@ -28,6 +28,8 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
+
+from tensorflow.contrib import slim
 from official.resnet import imagenet_preprocessing
 # bypass temp bug
 imagenet_preprocessing._RESIZE_MIN = 320
@@ -290,7 +292,32 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+        global first_train
+
+        if hvd.rank() == 0 and first_train and flags_obj.pretrained_model_path:
+            # add saver here
+            scanfold = tf.train.Scaffold()
+            exclusions = nets_factory.exclusion_for_training['inception_v3']
+
+            variables_to_restore = []
+            for var in tf.model_variables():
+                excluded = False
+                for exclusion in exclusions:
+                    if var.op.name.startswith(exclusion):
+                        excluded = True
+                        break
+                if not excluded:
+                    variables_to_restore.append(var)
+
+            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables())), len(variables_to_restore), variables_to_restore)
+
+            scanfold._saver = tf.train.Saver(var_list=variables_to_restore, filename=flags_obj.pretrained_model_path)
+
+            first_train = False
+        else:
+            scanfold = None
+
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, scanfold=scanfold)
 
     else:
         if hvd.rank() == 0:
@@ -398,7 +425,11 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--num_class', help='', type=int, default=1001)
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
+    parser.add_argument('--pretrained_model_path', help='', type=str)
 
     flags_obj = parser.parse_args()
+
+    global first_train
+    first_train = True
 
     tf.app.run()
