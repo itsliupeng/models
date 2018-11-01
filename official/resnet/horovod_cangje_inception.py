@@ -296,7 +296,7 @@ def cnn_model_fn(features, labels, mode, params):
 
         if hvd.rank() == 0 and first_train and flags_obj.pretrained_model_path:
             # add saver here
-            scanfold = tf.train.Scaffold()
+            scaffold = tf.train.Scaffold()
             exclusions = nets_factory.exclusion_for_training['inception_v3']
 
             variables_to_restore = []
@@ -311,13 +311,13 @@ def cnn_model_fn(features, labels, mode, params):
 
             lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables()), len(variables_to_restore), variables_to_restore))
 
-            scanfold._saver = tf.train.Saver(var_list=variables_to_restore, filename=flags_obj.pretrained_model_path)
+            scaffold._saver = tf.train.Saver(var_list=variables_to_restore, filename=flags_obj.pretrained_model_path)
 
             first_train = False
         else:
-            scanfold = None
+            scaffold = None
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, scanfold=scanfold)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, scaffold=scaffold)
 
     else:
         if hvd.rank() == 0:
