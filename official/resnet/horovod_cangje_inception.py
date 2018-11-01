@@ -326,7 +326,7 @@ def main(unused_argv):
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+        num_images=flags_obj.num_images, boundary_epochs=[20, 30, 35, 40],
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
@@ -406,6 +406,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--base_lr', help='', type=float, default=.128*0.6)
+    parser.add_argument('--num_images', help='', type=int)
 
     flags_obj = parser.parse_args()
 
