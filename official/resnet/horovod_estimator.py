@@ -52,7 +52,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
     training is started with random weights or restored from a checkpoint.
     """
 
-    def __init__(self, root_rank, device=''):
+    def __init__(self, root_rank, pretrained_model_path=None, device=''):
         """Construct a new BroadcastGlobalVariablesHook that will broadcast all
         global variables from root rank to all other processes during initialization.
 
@@ -67,13 +67,38 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         self.root_rank = root_rank
         self.bcast_op = None
         self.device = device
+        self._pretrained_model_path = pretrained_model_path
+        self._saver = None
 
     def begin(self):
         if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
             with tf.device(self.device):
                 self.bcast_op = hvd.broadcast_global_variables(self.root_rank)
 
+        if self._pretrained_model_path and hvd.rank() == 0:
+            # exclusions = nets_factory.exclusion_for_training['inception_v3']
+            exclusions = []
+
+            variables_to_restore = []
+            for var in tf.model_variables():
+                excluded = False
+                for exclusion in exclusions:
+                    if var.op.name.startswith(exclusion):
+                        excluded = True
+                        break
+                if not excluded:
+                    variables_to_restore.append(var)
+
+            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables()), len(variables_to_restore), variables_to_restore))
+            self._saver = tf.train.Saver(var_list=variables_to_restore)
+
     def after_create_session(self, session, coord):
+        if self._saver:
+            lp_debug_rank0('begin to restore from {}'.format(self._pretrained_model_path))
+            self._saver.restore(session, self._pretrained_model_path)
+            lp_debug_rank0('end to restore from {}'.format(self._pretrained_model_path))
+
+
         lp_debug_rank0('br begin after_create_session ')
         session.run(self.bcast_op)
         lp_debug_rank0('br end after_create_session')

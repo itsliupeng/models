@@ -292,32 +292,7 @@ def cnn_model_fn(features, labels, mode, params):
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
-        global first_train
-
-        if hvd.rank() == 0 and first_train and flags_obj.pretrained_model_path:
-            # add saver here
-            scaffold = tf.train.Scaffold()
-            exclusions = nets_factory.exclusion_for_training['inception_v3']
-
-            variables_to_restore = []
-            for var in tf.model_variables():
-                excluded = False
-                for exclusion in exclusions:
-                    if var.op.name.startswith(exclusion):
-                        excluded = True
-                        break
-                if not excluded:
-                    variables_to_restore.append(var)
-
-            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables()), len(variables_to_restore), variables_to_restore))
-
-            scaffold._saver = tf.train.Saver(var_list=variables_to_restore, filename=flags_obj.pretrained_model_path)
-
-            first_train = False
-        else:
-            scaffold = None
-
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, scaffold=scaffold)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     else:
         if hvd.rank() == 0:
@@ -378,6 +353,7 @@ def main(unused_argv):
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
     init_hooks = BroadcastGlobalVariablesHook(0)
+    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path)
 
     if flags_obj.evaluate:
         if hvd.rank() == 0:
@@ -386,7 +362,6 @@ def main(unused_argv):
             lp_debug(eval_results)
             lp_debug('end evaluate')
         return
-
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
@@ -401,7 +376,11 @@ def main(unused_argv):
             else:
                 train_hooks = [all_reduce_hook]
 
-            train_hooks.append(init_hooks)
+            if cycle_index == 0:
+                train_hooks.append(init_restore_hooks)
+                lp_debug_rank0('will restore from {}'.format(flags_obj.pretrained_model_path))
+            else:
+                train_hooks.append(init_hooks)
 
             classifier.train(input_fn=lambda: input_fn_train(num_train_epochs),
                              hooks=train_hooks, max_steps=None)
@@ -428,8 +407,5 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_model_path', help='', type=str)
 
     flags_obj = parser.parse_args()
-
-    global first_train
-    first_train = True
 
     tf.app.run()
