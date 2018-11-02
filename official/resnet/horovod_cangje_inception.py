@@ -420,7 +420,7 @@ if __name__ == "__main__":
     flags_obj = parser.parse_args()
 
     # 299
-    _DEFAULT_IMAGE_SIZE = nets_factory[flags_obj.model_type].default_image_size
+    _DEFAULT_IMAGE_SIZE = nets_factory.get_network_fn(flags_obj.model_type).default_image_size
     _RESIZE_MIN = flags_obj.resize_min
     _NUM_CHANNELS = 3
 
