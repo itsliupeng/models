@@ -139,7 +139,7 @@ exclusion_for_training = {'vgg_16': ['vgg_16/fc8'],
                           }
 
 
-def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
+def get_network_fn(name, num_classes, weight_decay=None, is_training=False):
     """Returns a network_fn such as `logits, end_points = network_fn(images)`.
 
     Args:
@@ -176,7 +176,10 @@ def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
 
     @functools.wraps(func)
     def network_fn(images, **kwargs):
-        arg_scope = arg_scopes_map[name](weight_decay=weight_decay)
+        if weight_decay:
+            arg_scope = arg_scopes_map[name](weight_decay=weight_decay)
+        else:
+            arg_scope = arg_scopes_map[name]()
         with slim.arg_scope(arg_scope):
             return func(images, num_classes, is_training=is_training, **kwargs)
 

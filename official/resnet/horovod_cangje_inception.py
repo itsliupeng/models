@@ -12,11 +12,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Convolutional Neural Network Estimator for MNIST, built with tf.layers."""
-
-
-
-
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,18 +19,18 @@ from __future__ import print_function
 
 import math
 import os
+import time
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
-from official.resnet.slim.nets import nets_factory
-
 # bypass temp bug
 imagenet_preprocessing._RESIZE_MIN = 320
 
+from official.resnet.slim.nets import nets_factory
 from official.resnet import resnet_run_loop
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0,\
     AllReduceTensorHook
 
 _DEFAULT_IMAGE_SIZE = 299
@@ -50,16 +45,9 @@ _NUM_IMAGES = {
 _NUM_TRAIN_FILES = 1024
 _SHUFFLE_BUFFER = 10000
 
-DATASET_NAME = 'ImageNet'
-
 tf.logging.set_verbosity(tf.logging.INFO)
 
-
-###############################################################################
-# Data processing
-###############################################################################
 def get_filenames(is_training, data_dir, test=False):
-    """Return filenames for dataset."""
     if not test:
         if is_training:
             return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('train'), os.listdir(data_dir))]
@@ -67,7 +55,6 @@ def get_filenames(is_training, data_dir, test=False):
             return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('val'), os.listdir(data_dir))]
     else:
         return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('test'), os.listdir(data_dir))]
-
 
 
 def _parse_example_proto(example_serialized):
@@ -210,16 +197,14 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
     )
 
 
-def cnn_model_fn(features, labels, mode, params):
-    weight_decay = 1e-4
-    momentum = 0.9
-
-    model = nets_factory.get_network_fn('inception_v3', flags_obj.num_class, weight_decay=0.00004, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+def model_fn(features, labels, mode, params):
+    model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_class, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
-    aux_logits = end_points['AuxLogits']
+    aux_logits = end_points['AuxLogits'] if 'AuxLogits' in end_points else None
 
     logits = tf.cast(logits, tf.float32)
-    aux_logits = tf.cast(aux_logits, tf.float32)
+    if aux_logits:
+        aux_logits = tf.cast(aux_logits, tf.float32)
 
     predictions = {
         "classes": tf.argmax(input=logits, axis=1),
@@ -229,7 +214,8 @@ def cnn_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
-    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
+    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4) \
+        if aux_logits else tf.constant(0.0)
 
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name and 'BatchNorm' not in name
@@ -238,26 +224,26 @@ def cnn_model_fn(features, labels, mode, params):
     trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
     global_variables = tf.global_variables()
 
+    regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+
     lp_debug_rank0('global_variables {}'.format(len(global_variables)))
     lp_debug_rank0('trainable_variables {}'.format(len(trainable_variables)))
     lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
+    lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
 
-    # Add weight decay to the loss.
-    l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
-    loss = cross_entropy + aux_loss + l2_loss
+    # l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
+    l2_loss = regularization_losses
+    loss = tf.add_n([cross_entropy, aux_loss], l2_loss)
 
-    tf.identity(l2_loss, 'l2_loss')
-    tf.identity(loss, name='loss')
     tf.identity(cross_entropy, name='cross_entropy')
     tf.identity(aux_loss, name='aux_loss')
+    tf.identity(l2_loss, 'l2_loss')
+    tf.identity(loss, name='loss')
 
     if hvd.rank() == 0:
         tf.summary.scalar('cross_entropy', cross_entropy)
-        tf.summary.scalar('l2_loss', l2_loss)
         tf.summary.scalar('aux_loss', aux_loss)
-
-        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
+        tf.summary.scalar('l2_loss', l2_loss)
 
     accuracy = tf.metrics.accuracy(labels, predictions['classes'])
     accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
@@ -270,7 +256,7 @@ def cnn_model_fn(features, labels, mode, params):
         global_step = tf.train.get_or_create_global_step()
 
         learning_rate = params['learning_rate_fn'](global_step)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
         optimizer = hvd.DistributedOptimizer(optimizer)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -287,9 +273,7 @@ def cnn_model_fn(features, labels, mode, params):
         lp_debug_rank0('update_ops size {}'.format(len(update_ops)))
 
         if hvd.rank() == 0:
-            # Create a tensor named learning_rate for logging purposes
             tf.summary.scalar('learning_rate', learning_rate)
-            # Create a tensor named train_accuracy for logging purposes
             tf.summary.scalar('train_accuracy', accuracy[1])
             tf.summary.scalar('train_accuracy_top_5', accuracy_top_5[1])
 
@@ -307,22 +291,12 @@ def cnn_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
-    # Horovod: initialize Horovod.
     hvd.init()
-
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-
-    # Create session config based on values of inter_op_parallelism_threads and
-    # intra_op_parallelism_threads. Note that we default to having
-    # allow_soft_placement = True, which is required for multi-GPU and not
-    # harmful for other modes.
     session_config = tf.ConfigProto(
         inter_op_parallelism_threads=8,
         intra_op_parallelism_threads=4,
         allow_soft_placement=True)
-
-
-    # Horovod: pin GPU to be used to process local rank (one GPU per process)
     session_config.gpu_options.allow_growth = True
     session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
@@ -332,9 +306,7 @@ def main(unused_argv):
         decay_rates=[1, 0.1, 0.01, 0.001, 1e-4, 1e-5], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
-
-    # Create the tf.estimator
-    classifier = HorovodEstimator(model_fn=cnn_model_fn, model_dir=model_dir,
+    classifier = HorovodEstimator(model_fn=model_fn, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
 
@@ -357,8 +329,7 @@ def main(unused_argv):
             num_epochs=1, test=True)
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
-    all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=300)
+    all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
                                                       exclusions=nets_factory.exclusion_for_training['inception_v3'])
@@ -369,6 +340,8 @@ def main(unused_argv):
             eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
             lp_debug(eval_results)
             lp_debug('end evaluate')
+        else:
+            time.sleep(60 * 10)
         return
 
     if flags_obj.test:
@@ -377,6 +350,8 @@ def main(unused_argv):
             eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=[init_hooks])
             lp_debug(eval_results)
             lp_debug('end test')
+        else:
+            time.sleep(60 * 10)
         return
 
     continue_train_epoch = 20
@@ -387,13 +362,10 @@ def main(unused_argv):
     schedule.insert(0, continue_train_epoch)
 
     for cycle_index, num_train_epochs in enumerate(schedule):
-        lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
+        lp_debug_rank0('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
         if num_train_epochs:
-            if hvd.rank() == 0:
-                train_hooks = [all_reduce_hook]
-            else:
-                train_hooks = [all_reduce_hook]
+            train_hooks = [all_reduce_hook]
 
             if cycle_index == 0:
                 train_hooks.append(init_restore_hooks)
@@ -409,6 +381,9 @@ def main(unused_argv):
                 eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[])
                 lp_debug(eval_results)
                 lp_debug('end evaluate')
+            else:
+                # should wait for rank0 to finish evaluating
+                time.sleep(60)
 
 
 if __name__ == "__main__":
@@ -416,10 +391,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
-    parser.add_argument('--batch_size', help='', type=int, default=32)
+    parser.add_argument('--batch_size', help='', type=int, default=256)
+    parser.add_argument('--model_type', help='', type=str, default='inception_v3')
     parser.add_argument('--train_epochs', help='', type=int, default=70)
-    parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
-    parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
+    parser.add_argument('--epochs_between_evals', help='', type=int, default=3)
+    parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--num_class', help='', type=int, default=1001)

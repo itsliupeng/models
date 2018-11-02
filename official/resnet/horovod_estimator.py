@@ -125,7 +125,7 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(session_run_hook.SessionRunHook):
-    def __init__(self, named_tensor, summary_dir=None, every_n_iter=300, print_rank0=True):
+    def __init__(self, named_tensor, summary_dir=None, every_n_iter=600, print_rank0=True):
         self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
         self._print_rank0 = print_rank0
@@ -176,7 +176,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 
 class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
-    def __init__(self, features, labels, every_n_steps=300, every_n_secs=None, output_dir=None, summary_writer=None):
+    def __init__(self, features, labels, every_n_steps=600, every_n_secs=None, output_dir=None, summary_writer=None):
         super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
         self._features = features
         self._labels = labels
@@ -188,9 +188,9 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
     def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
         steps_per_sec = elapsed_steps / elapsed_time
         if self._summary_writer is not None:
-            if self._total_bach_size:
+            if self._total_batch_size:
                 image_tag = 'images/sec'
-                image_count = float(steps_per_sec) * self._total_bach_size
+                image_count = float(steps_per_sec) * self._total_batch_size
                 summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
                                          Summary.Value(tag=image_tag, simple_value=image_count)])
                 logging.info("%s: %g, %s: %g", self._summary_tag, steps_per_sec, image_tag, image_count)
@@ -207,7 +207,7 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
         features = run_values.results['features']
         labels = run_values.results['labels']
 
-        self._total_bach_size = features.shape[0] * hvd.size()
+        self._total_batch_size = features.shape[0] * hvd.size()
 
         if self._timer.should_trigger_for_step(
                 stale_global_step + self._steps_per_run):
@@ -255,13 +255,13 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              save_summaries_secs=USE_DEFAULT,
                              config=None,
                              stop_grace_period_secs=120,
-                             log_step_count_steps=100,
+                             log_step_count_steps=600,
                              save_checkpoint_steps=USE_DEFAULT,
                              summary_dir=None,
                              features=None,
                              labels=None):
     if save_summaries_steps == USE_DEFAULT and save_summaries_secs == USE_DEFAULT:
-        save_summaries_steps = 100
+        save_summaries_steps = 300
         save_summaries_secs = None
     elif save_summaries_secs == USE_DEFAULT:
         save_summaries_secs = None
