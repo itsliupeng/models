@@ -222,10 +222,7 @@ def cnn_model_fn(features, labels, mode, params):
     aux_logits = tf.cast(aux_logits, tf.float32)
 
     predictions = {
-        # Generate predictions (for PREDICT and EVAL mode)
         "classes": tf.argmax(input=logits, axis=1),
-        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-        # `logging_hook`.
         "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
     }
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -361,7 +358,7 @@ def main(unused_argv):
 
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
-    all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
+    all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=300)
     init_hooks = BroadcastGlobalVariablesHook(0)
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
                                                       exclusions=nets_factory.exclusion_for_training['inception_v3'])
@@ -382,16 +379,19 @@ def main(unused_argv):
             lp_debug('end test')
         return
 
-    n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
+    continue_train_epoch = 20
+    rest_train_epoch = flags_obj.train_epochs - continue_train_epoch
+    n_loops = math.ceil(rest_train_epoch / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
-    schedule[-1] = flags_obj.train_epochs - sum(schedule[:-1])  # over counting.
+    schedule[-1] = rest_train_epoch - sum(schedule[:-1])  # over counting.
+    schedule.insert(0, continue_train_epoch)
 
     for cycle_index, num_train_epochs in enumerate(schedule):
         lp_debug('Starting cycle: {}/{}'.format(cycle_index, int(n_loops)))
 
         if num_train_epochs:
             if hvd.rank() == 0:
-                train_hooks = [logging_hook, all_reduce_hook]
+                train_hooks = [all_reduce_hook]
             else:
                 train_hooks = [all_reduce_hook]
 

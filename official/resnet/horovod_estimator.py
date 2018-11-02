@@ -89,7 +89,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
                 if not excluded:
                     variables_to_restore.append(var)
 
-            lp_debug('model_variables len {}, restore len {}, {}'.format(len(tf.model_variables()), len(variables_to_restore), variables_to_restore))
+            lp_debug('model_variables len {}, restore len {}'.format(len(tf.model_variables()), len(variables_to_restore)))
             self._saver = tf.train.Saver(var_list=variables_to_restore)
 
     def after_create_session(self, session, coord):
