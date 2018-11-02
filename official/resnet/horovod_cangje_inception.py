@@ -236,7 +236,7 @@ def model_fn(features, labels, mode, params):
 
     # l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
     l2_loss = tf.add_n(regularization_losses)
-    loss = cross_entropy, aux_loss + l2_loss
+    loss = cross_entropy + aux_loss + l2_loss
 
     tf.identity(cross_entropy, name='cross_entropy')
     tf.identity(aux_loss, name='aux_loss')
