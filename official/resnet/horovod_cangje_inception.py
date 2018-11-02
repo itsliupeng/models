@@ -326,8 +326,8 @@ def main(unused_argv):
 
     learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
         batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=flags_obj.num_images, boundary_epochs=[20, 30, 35, 40],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
+        num_images=flags_obj.num_images, boundary_epochs=[20, 30, 40, 50, 60],
+        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4, 1e-5], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
 
@@ -398,14 +398,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
     parser.add_argument('--batch_size', help='', type=int, default=32)
-    parser.add_argument('--train_epochs', help='', type=int, default=90)
+    parser.add_argument('--train_epochs', help='', type=int, default=70)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--num_class', help='', type=int, default=1001)
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--pretrained_model_path', help='', type=str)
-    parser.add_argument('--base_lr', help='', type=float, default=.128*0.6)
+    parser.add_argument('--base_lr', help='', type=float, default=0.01)
     parser.add_argument('--num_images', help='', type=int)
 
     flags_obj = parser.parse_args()
