@@ -28,9 +28,9 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import horovod.tensorflow as hvd
-
-from official.resnet.slim.nets import nets_factory
 from official.resnet import imagenet_preprocessing
+from official.resnet.slim.nets import nets_factory
+
 # bypass temp bug
 imagenet_preprocessing._RESIZE_MIN = 320
 
@@ -54,15 +54,20 @@ DATASET_NAME = 'ImageNet'
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
+
 ###############################################################################
 # Data processing
 ###############################################################################
-def get_filenames(is_training, data_dir):
+def get_filenames(is_training, data_dir, test=False):
     """Return filenames for dataset."""
-    if is_training:
-        return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('train'),  os.listdir(data_dir))]
+    if not test:
+        if is_training:
+            return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('train'), os.listdir(data_dir))]
+        else:
+            return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('val'), os.listdir(data_dir))]
     else:
-        return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('val'),  os.listdir(data_dir))]
+        return [os.path.join(data_dir, i) for i in filter(lambda x: x.startswith('test'), os.listdir(data_dir))]
+
 
 
 def _parse_example_proto(example_serialized):
@@ -164,7 +169,7 @@ def parse_record(raw_record, is_training, dtype):
     return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0, test=False):
     """Input function which provides batches for train or eval.
 
     Args:
@@ -348,6 +353,12 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1)
 
+    def input_fn_test():
+        return input_fn(
+            is_training=False, data_dir=flags_obj.data_dir,
+            batch_size=flags_obj.batch_size,
+            num_epochs=1, test=True)
+
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir, every_n_iter=100)
@@ -361,6 +372,14 @@ def main(unused_argv):
             eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
             lp_debug(eval_results)
             lp_debug('end evaluate')
+        return
+
+    if flags_obj.test:
+        if hvd.rank() == 0:
+            lp_debug('begin test')
+            eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=[init_hooks])
+            lp_debug(eval_results)
+            lp_debug('end test')
         return
 
     n_loops = math.ceil(flags_obj.train_epochs / flags_obj.epochs_between_evals)
@@ -402,6 +421,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=600)
     parser.add_argument('--evaluate', help='', action='store_true')
+    parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--num_class', help='', type=int, default=1001)
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--pretrained_model_path', help='', type=str)
