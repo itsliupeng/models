@@ -1,18 +1,3 @@
-#  Copyright 2018 Uber Technologies, Inc. All Rights Reserved.
-#  Copyright 2016 The TensorFlow Authors. All Rights Reserved.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -21,31 +6,23 @@ import math
 import os
 import time
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-
+import tensorflow as tf
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
-# bypass temp bug
-imagenet_preprocessing._RESIZE_MIN = 320
-
 from official.resnet.slim.nets import nets_factory
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0,\
     AllReduceTensorHook
 
-_DEFAULT_IMAGE_SIZE = 299
-_NUM_CHANNELS = 3
-_NUM_CLASSES = 1001
-
 _NUM_IMAGES = {
     'train': 1281167,
     'validation': 50000,
 }
-
 _NUM_TRAIN_FILES = 1024
-_SHUFFLE_BUFFER = 10000
+_SHUFFLE_BUFFER = 100000
 
 tf.logging.set_verbosity(tf.logging.INFO)
+
 
 def get_filenames(is_training, data_dir, test=False):
     if not test:
@@ -93,12 +70,9 @@ def _parse_example_proto(example_serialized):
     """
     # Dense features in Example proto.
     feature_map = {
-        'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
-                                            default_value=''),
-        'image/class/label': tf.FixedLenFeature([], dtype=tf.int64,
-                                                default_value=-1),
-        'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
-                                               default_value=''),
+        'image/encoded': tf.FixedLenFeature([], dtype=tf.string, default_value=''),
+        'image/class/label': tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+        'image/class/text': tf.FixedLenFeature([], dtype=tf.string, default_value=''),
     }
     sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
     # Sparse features in Example proto.
@@ -150,31 +124,67 @@ def parse_record(raw_record, is_training, dtype):
         output_height=_DEFAULT_IMAGE_SIZE,
         output_width=_DEFAULT_IMAGE_SIZE,
         num_channels=_NUM_CHANNELS,
-        is_training=is_training)
+        is_training=is_training,
+        resize_min=_RESIZE_MIN)
     image = tf.cast(image, dtype)
 
     return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0, test=False):
-    """Input function which provides batches for train or eval.
+def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
+                           parse_record_fn, num_epochs=1, num_gpus=None,
+                           examples_per_epoch=None, dtype=tf.float32):
+    """Given a Dataset with raw records, return an iterator over the records.
 
     Args:
+      dataset: A Dataset representing raw records
       is_training: A boolean denoting whether the input is for training.
-      data_dir: The directory containing the input data.
       batch_size: The number of samples per batch.
+      shuffle_buffer: The buffer size to use when shuffling records. A larger
+        value results in better randomness, but smaller values reduce startup
+        time and use less memory.
+      parse_record_fn: A function that takes a raw record and returns the
+        corresponding (image, label) pair.
       num_epochs: The number of epochs to repeat the dataset.
       num_gpus: The number of gpus used for training.
-      dtype: Data type to use for images/features
+      examples_per_epoch: The number of examples in an epoch.
+      dtype: Data type to use for images/features.
 
     Returns:
-      A dataset that can be used for iteration.
+      Dataset of (image, label) pairs ready for iteration.
     """
+
+    # Prefetches a batch at a time to smooth out the time taken to load input
+    # files for shuffling and processing.
+    dataset = dataset.prefetch(buffer_size=batch_size)
+    if is_training:
+        # Shuffles records before repeating to respect epoch boundaries.
+        dataset = dataset.shuffle(buffer_size=shuffle_buffer)
+
+    # Repeats the dataset for the number of epochs to train.
+    dataset = dataset.repeat(num_epochs)
+
+    # Parses the raw records into images and labels.
+    dataset = dataset.apply(tf.contrib.data.map_and_batch(lambda value: parse_record_fn(value, is_training, dtype),
+            batch_size=batch_size,
+            # num_parallel_calls=1,
+            drop_remainder=False))
+
+    # Operations between the final prefetch and the get_next call to the iterator
+    # will happen synchronously during run time. We prefetch here again to
+    # background all of the above processing work and keep it out of the
+    # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
+    # allows DistributionStrategies to adjust how many batches to fetch based
+    # on how many devices are present.
+    dataset = dataset.prefetch(buffer_size=10240)
+    return dataset
+
+
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0, test=False):
     filenames = get_filenames(is_training, data_dir, test=test)
     dataset = tf.data.Dataset.from_tensor_slices(filenames).shard(num_shards, shard_index)
 
     if is_training:
-        # Shuffle the input files
         dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
     # Convert to individual records.
@@ -182,10 +192,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
     # This number is low enough to not cause too much contention on small systems
     # but high enough to provide the benefits of parallelization. You may want
     # to increase this number if you have a large number of CPU cores.
-    dataset = dataset.apply(tf.contrib.data.parallel_interleave(
-        tf.data.TFRecordDataset, cycle_length=10))
+    dataset = dataset.apply(tf.contrib.data.parallel_interleave(tf.data.TFRecordDataset, cycle_length=30))
 
-    return resnet_run_loop.process_record_dataset(
+    return process_record_dataset(
         dataset=dataset,
         is_training=is_training,
         batch_size=batch_size,
@@ -335,7 +344,7 @@ def main(unused_argv):
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
-                                                      exclusions=nets_factory.exclusion_for_training['inception_v3'])
+                                                      exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
     if flags_obj.evaluate:
         if hvd.rank() == 0:
@@ -394,19 +403,25 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
-    parser.add_argument('--batch_size', help='', type=int, default=256)
     parser.add_argument('--model_type', help='', type=str, default='inception_v3')
+    parser.add_argument('--model_dir', help='', type=str, default='model_dir')
+    parser.add_argument('--batch_size', help='', type=int, default=256)
     parser.add_argument('--train_epochs', help='', type=int, default=70)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=3)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
+    parser.add_argument('--num_class', help='', type=int, default=1001)
+    parser.add_argument('--base_lr', help='', type=float, default=0.01)
+    parser.add_argument('--resize_min', help='', type=int, default=320)
+    parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
-    parser.add_argument('--num_class', help='', type=int, default=1001)
-    parser.add_argument('--model_dir', help='', type=str, default='model_dir')
-    parser.add_argument('--pretrained_model_path', help='', type=str)
-    parser.add_argument('--base_lr', help='', type=float, default=0.01)
     parser.add_argument('--num_images', help='', type=int)
 
     flags_obj = parser.parse_args()
+
+    # 299
+    _DEFAULT_IMAGE_SIZE = nets_factory[flags_obj.model_type].default_image_size
+    _RESIZE_MIN = flags_obj.resize_min
+    _NUM_CHANNELS = 3
 
     tf.app.run()

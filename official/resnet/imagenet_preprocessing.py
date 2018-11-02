@@ -224,7 +224,7 @@ def _resize_image(image, height, width):
 
 
 def preprocess_image(image_buffer, bbox, output_height, output_width,
-                     num_channels, is_training=False):
+                     num_channels, is_training=False, resize_min=_RESIZE_MIN):
     """Preprocesses the given image.
   
     Preprocessing includes decoding, cropping, and resizing for both training
@@ -252,7 +252,7 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     else:
         # For validation, we want to decode, resize, then just crop the middle.
         image = tf.image.decode_jpeg(image_buffer, channels=num_channels)
-        image = _aspect_preserving_resize(image, _RESIZE_MIN)
+        image = _aspect_preserving_resize(image, resize_min)
         image = _central_crop(image, output_height, output_width)
 
     image.set_shape([output_height, output_width, num_channels])
