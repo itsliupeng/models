@@ -183,7 +183,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
     Returns:
       A dataset that can be used for iteration.
     """
-    filenames = get_filenames(is_training, data_dir)
+    filenames = get_filenames(is_training, data_dir, test=test)
     dataset = tf.data.Dataset.from_tensor_slices(filenames).shard(num_shards, shard_index)
 
     if is_training:
