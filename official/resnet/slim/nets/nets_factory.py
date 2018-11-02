@@ -139,7 +139,7 @@ exclusion_for_training = {'vgg_16': ['vgg_16/fc8'],
                           }
 
 
-def get_network_fn(name, num_classes, weight_decay=None, is_training=False):
+def get_network_fn(name, num_classes=1001, weight_decay=None, is_training=False):
     """Returns a network_fn such as `logits, end_points = network_fn(images)`.
 
     Args:
