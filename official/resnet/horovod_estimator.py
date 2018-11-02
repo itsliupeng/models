@@ -193,10 +193,10 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
                 image_count = float(steps_per_sec) * self._total_batch_size
                 summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
                                          Summary.Value(tag=image_tag, simple_value=image_count)])
-                logging.info("%s: %g, %s: %g", self._summary_tag, steps_per_sec, image_tag, image_count)
+                logging.info("%s: %g, %s: %g, step: %g", self._summary_tag, steps_per_sec, image_tag, image_count, global_step)
             else:
                 summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec)])
-                logging.info("%s: %g", self._summary_tag, steps_per_sec)
+                logging.info("%s: %g, step: %g", self._summary_tag, steps_per_sec, global_step)
 
             self._summary_writer.add_summary(summary, global_step)
 
