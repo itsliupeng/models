@@ -125,7 +125,7 @@ class BroadcastBatchNormHook(tf.train.SessionRunHook):
 
 
 class AllReduceTensorHook(session_run_hook.SessionRunHook):
-    def __init__(self, named_tensor, summary_dir=None, every_n_iter=100, print_rank0=True):
+    def __init__(self, named_tensor, summary_dir=None, every_n_iter=300, print_rank0=True):
         self._named_tensor = named_tensor
         self._every_n_iter = every_n_iter
         self._print_rank0 = print_rank0
@@ -176,7 +176,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 
 class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
-    def __init__(self, features, labels, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
+    def __init__(self, features, labels, every_n_steps=300, every_n_secs=None, output_dir=None, summary_writer=None):
         super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
         self._features = features
         self._labels = labels
@@ -283,7 +283,6 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if is_chief and chief_only_hooks:
         all_hooks.extend(chief_only_hooks)
 
-    # lp-to-do: restore from checkpoint, should br rank 0 variables
     session_creator = ChiefSessionCreator(
         scaffold=scaffold,
         checkpoint_dir=checkpoint_dir,
@@ -317,7 +316,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
     if hooks:
         all_hooks.extend(hooks)
 
-    lp_debug('all hooks {},\n hooks {},\n chief_only_hooks {},\n checkpoint_dir {}'.format(all_hooks, hooks,
+    lp_debug_rank0('all hooks {},\n hooks {},\n chief_only_hooks {},\n checkpoint_dir {}'.format(all_hooks, hooks,
                                                                                            chief_only_hooks,
                                                                                            checkpoint_dir))
     return MonitoredSession(
@@ -441,21 +440,9 @@ class HorovodEstimator(estimator.Estimator):
         ops.add_to_collection(ops.GraphKeys.LOSSES, estimator_spec.loss)
         worker_hooks.extend(hooks)
         worker_hooks.extend([
-            # lp: loss hook
-            # AllReduceTensorHook({'loss_avg': 'loss'}),
-            # AllReduceTensorHook({'loss': 'loss'}, every_n_iter=100),
             training.NanTensorHook(estimator_spec.loss)
         ])
-        if self._config.log_step_count_steps is not None:
-            if is_rank0():
-                worker_hooks.append(
-                    training.LoggingTensorHook(
-                        {
-                            'loss': estimator_spec.loss,
-                            'step': global_step_tensor
-                        },
-                        every_n_iter=self._config.log_step_count_steps)
-                )
+
         worker_hooks.extend(estimator_spec.training_hooks)
 
         if not (estimator_spec.scaffold.saver or
