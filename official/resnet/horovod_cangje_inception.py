@@ -366,7 +366,7 @@ def main(unused_argv):
             time.sleep(60 * 10)
         return
 
-    continue_train_epoch = 20
+    continue_train_epoch = flags_obj.continue_train_epoch
     rest_train_epoch = flags_obj.train_epochs - continue_train_epoch
     n_loops = math.ceil(rest_train_epoch / flags_obj.epochs_between_evals)
     schedule = [flags_obj.epochs_between_evals for _ in range(int(n_loops))]
@@ -407,7 +407,8 @@ if __name__ == "__main__":
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--batch_size', help='', type=int, default=256)
     parser.add_argument('--train_epochs', help='', type=int, default=70)
-    parser.add_argument('--epochs_between_evals', help='', type=int, default=3)
+    parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
+    parser.add_argument('--continue_train_epoch', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
     parser.add_argument('--num_class', help='', type=int, default=1001)
     parser.add_argument('--base_lr', help='', type=float, default=0.01)
