@@ -200,11 +200,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 def model_fn(features, labels, mode, params):
     model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_class, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
-    aux_logits = end_points['AuxLogits'] if 'AuxLogits' in end_points else None
 
     logits = tf.cast(logits, tf.float32)
-    if aux_logits:
-        aux_logits = tf.cast(aux_logits, tf.float32)
 
     predictions = {
         "classes": tf.argmax(input=logits, axis=1),
@@ -214,8 +211,14 @@ def model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
-    aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4) \
-        if aux_logits else tf.constant(0.0)
+
+    if 'AuxLogits' in end_points:
+        aux_logits = end_points['AuxLogits']
+        aux_logits = tf.cast(aux_logits, tf.float32)
+        aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
+
+    else:
+        aux_loss = tf.constant(0.0)
 
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name and 'BatchNorm' not in name
