@@ -397,7 +397,7 @@ def main(unused_argv):
 
             if hvd.rank() == 0:
                 lp_debug('begin evaluate')
-                eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[])
+                eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[cm_hook])
                 lp_debug(eval_results)
                 lp_debug('end evaluate')
             else:

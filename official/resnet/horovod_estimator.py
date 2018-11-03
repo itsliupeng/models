@@ -334,7 +334,7 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
 
         return Summary(value=[Summary.Value(tag=tag, image=image)])
 
-    def end(self, session: tf.Session):
+    def end(self, session):
         summary_dir = session._config.model_dir if session._config else None
         summary_writer = tf.summary.FileWriterCache.get(summary_dir)
 
