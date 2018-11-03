@@ -410,13 +410,13 @@ if __name__ == "__main__":
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--continue_train_epoch', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
-    parser.add_argument('--num_class', help='', type=int, default=1001)
+    parser.add_argument('--num_classes', help='', type=int, default=1001)
     parser.add_argument('--base_lr', help='', type=float, default=0.01)
     parser.add_argument('--resize_min', help='', type=int, default=320)
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
-    parser.add_argument('--num_images', help='', type=int)
+    parser.add_argument('--num_images', help='', type=int, default=1281167)
 
     flags_obj = parser.parse_args()
 
