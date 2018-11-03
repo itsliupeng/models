@@ -4,29 +4,29 @@ from __future__ import print_function
 
 import socket
 
+import matplotlib as mpl
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import confusion_matrix
 from tensorflow import estimator
+from tensorflow.core.framework.summary_pb2 import Summary
+from tensorflow.python.eager import context
 from tensorflow.python.estimator import model_fn as model_fn_lib
+from tensorflow.python.estimator import run_config
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import random_seed
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.summary import summary
 from tensorflow.python.training import basic_session_run_hooks
+from tensorflow.python.training import session_run_hook
 from tensorflow.python.training import training
 from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
-from tensorflow.python.training import session_run_hook
-from tensorflow.python.eager import context
-from tensorflow.python.estimator import run_config
-from tensorflow.core.framework.summary_pb2 import Summary
-from sklearn.metrics import confusion_matrix
 
 import horovod.tensorflow as hvd
 
-import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import io
@@ -262,14 +262,14 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         self._all_labels = []
         self._all_predicts = []
 
-    def beigin(self):
+    def begin(self):
         self._global_step_tensor = training_util._get_or_create_global_step_read()
 
     def before_run(self, run_context):
-        return SessionRunArgs( {'features': basic_session_run_hooks._as_graph_element(self._features_name),
-                                'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
-                                'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name),
-                                'global_step': self._global_step_tensor})
+        return SessionRunArgs({'features': basic_session_run_hooks._as_graph_element(self._features_name),
+                               'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
+                               'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name),
+                               'global_step': self._global_step_tensor})
 
     def after_run(self, run_context, run_values):
         _ = run_context
