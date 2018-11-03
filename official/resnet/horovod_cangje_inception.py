@@ -211,7 +211,7 @@ def model_fn(features, labels, mode, params):
     logits, end_points = model(features)
     logits = tf.cast(logits, tf.float32)
 
-    predicts = tf.arg_max(input=logits, axis=1)
+    predicts = tf.argmax(input=logits, axis=1)
 
     tf.identity(features, 'features')
     tf.identity(labels, 'labels')
