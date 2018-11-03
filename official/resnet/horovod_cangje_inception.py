@@ -207,7 +207,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 
 
 def model_fn(features, labels, mode, params):
-    model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_class, is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
 
     logits = tf.cast(logits, tf.float32)
