@@ -395,6 +395,7 @@ def main(unused_argv):
                 lp_debug('end evaluate')
             else:
                 # should wait for rank0 to finish evaluating
+                lp_debug('begin to sleep')
                 time.sleep(60)
 
 
