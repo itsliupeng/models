@@ -12,7 +12,7 @@ from official.resnet import imagenet_preprocessing
 from official.resnet.slim.nets import nets_factory
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0,\
-    AllReduceTensorHook
+    AllReduceTensorHook, ConfusionMatrixHook
 
 _NUM_IMAGES = {
     'train': 1281167,
@@ -209,8 +209,13 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 def model_fn(features, labels, mode, params):
     model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
-
     logits = tf.cast(logits, tf.float32)
+
+    predicts = tf.arg_max(input=logits, axis=1)
+
+    tf.identity(features, 'features')
+    tf.identity(labels, 'labels')
+    tf.identity(predicts, 'predicts')
 
     predictions = {
         "classes": tf.argmax(input=logits, axis=1),
@@ -346,10 +351,12 @@ def main(unused_argv):
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
                                                       exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
+    cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts')
+
     if flags_obj.evaluate:
         if hvd.rank() == 0:
             lp_debug('begin evaluate')
-            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks])
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks, cm_hook])
             lp_debug(eval_results)
             lp_debug('end evaluate')
         else:
@@ -359,7 +366,7 @@ def main(unused_argv):
     if flags_obj.test:
         if hvd.rank() == 0:
             lp_debug('begin test')
-            eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=[init_hooks])
+            eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=[init_hooks, cm_hook])
             lp_debug(eval_results)
             lp_debug('end test')
         else:

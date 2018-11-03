@@ -22,8 +22,16 @@ from tensorflow.python.training import session_run_hook
 from tensorflow.python.eager import context
 from tensorflow.python.estimator import run_config
 from tensorflow.core.framework.summary_pb2 import Summary
+from sklearn.metrics import confusion_matrix
 
 import horovod.tensorflow as hvd
+
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+import io
+import itertools
+from PIL import Image
 
 estimator.Estimator._assert_members_are_not_overridden = lambda _: None
 
@@ -189,7 +197,7 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
         steps_per_sec = elapsed_steps / elapsed_time
         if self._summary_writer is not None:
             if self._total_batch_size:
-                image_tag = 'images/sec'
+                image_tag = 'images_sec'
                 image_count = float(steps_per_sec) * self._total_batch_size
                 summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
                                          Summary.Value(tag=image_tag, simple_value=image_count)])
@@ -242,6 +250,98 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
             self._global_step_check_count = 0
 
         self._last_global_step = stale_global_step
+
+
+class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.SessionRunHook):
+    def __init__(self, num_classes, features_name, labels_name, predicts_name):
+        super(ConfusionMatrixHook, self).__init__(every_steps=1)
+        self._num_classes = num_classes
+        self._features_name = features_name
+        self._labels_name = labels_name
+        self._predicts_name = predicts_name
+        self._all_labels = []
+        self._all_predicts = []
+
+    def beigin(self):
+        self._global_step_tensor = training_util._get_or_create_global_step_read()
+
+    def before_run(self, run_context):
+        return SessionRunArgs( {'features': basic_session_run_hooks._as_graph_element(self._features_name),
+                                'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
+                                'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name),
+                                'global_step': self._global_step_tensor})
+
+    def after_run(self, run_context, run_values):
+        _ = run_context
+
+        features = run_values.results['features']
+        labels = run_values.results['labels']
+        predicts = run_values.results['predicts']
+
+        self._global_step  = run_values.results['global_step']
+        self._all_labels.append(labels)
+        self._all_predicts.append(predicts)
+
+    def make_image(self, tensor):
+        """Convert an numpy representation image to Image protobuf"""
+        from PIL import Image
+        height, width, channel = tensor.shape
+        image = Image.fromarray(tensor)
+        import io
+        output = io.BytesIO()
+        image.save(output, format='PNG')
+        image_string = output.getvalue()
+        output.close()
+        return Summary.Image(height=height,
+                             width=width,
+                             colorspace=channel,
+                             encoded_image_string=image_string)
+
+    def confusion_matrix_summary(self, tag, cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+        """
+        This function prints and plots the confusion matrix.
+        Normalization can be applied by setting `normalize=True`.
+        """
+        if normalize:
+            cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+        plt.close('all')
+
+        f_size = max(5, int(0.6 * len(classes)))
+        plt.figure(figsize=(f_size, f_size))
+        plt.imshow(cm, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, classes)
+        plt.yticks(tick_marks, classes)
+
+        fmt = '.2f' if normalize else 'd'
+        thresh = cm.max() / 2.
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, format(cm[i, j], fmt), horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.tight_layout()
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        image = Image.open(buf).convert('RGB')
+        tensor = np.asarray(image, dtype=np.uint8)
+        image = self.make_image(tensor)
+
+        return Summary(value=[Summary.Value(tag=tag, image=image)])
+
+    def end(self, session: tf.Session):
+        summary_dir = session._config.model_dir if session._config else None
+        summary_writer = tf.summary.FileWriterCache.get(summary_dir)
+
+        cnf_matrix = confusion_matrix(self._all_labels, self._all_predicts)
+        summary = self.confusion_matrix_summary(self.confusion_matrix_summary('confusion_matrix', cnf_matrix, self._num_classes))
+        summary_writer.add_summary(summary, self._global_step)
+
 
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
@@ -323,6 +423,7 @@ def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
         session_creator=session_creator,
         hooks=all_hooks,
         stop_grace_period_secs=stop_grace_period_secs)
+
 
 def _check_listeners_type(saving_listeners):
   """Check listeners type."""
