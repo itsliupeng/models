@@ -430,6 +430,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
 
     flags_obj = parser.parse_args()
+    lp_debug_rank0('flag_obj: {}'.format(flags_obj))
 
     # 299
     _DEFAULT_IMAGE_SIZE = nets_factory.get_network_fn(flags_obj.model_type).default_image_size
