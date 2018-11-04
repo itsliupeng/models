@@ -351,7 +351,7 @@ def main(unused_argv):
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
                                                       exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
-    cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts')
+    cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
 
     if flags_obj.evaluate:
         if hvd.rank() == 0:

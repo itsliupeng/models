@@ -253,7 +253,7 @@ class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
 
 
 class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.SessionRunHook):
-    def __init__(self, num_classes, features_name, labels_name, predicts_name):
+    def __init__(self, num_classes, features_name, labels_name, predicts_name, summary_dir):
         super(ConfusionMatrixHook, self).__init__(every_steps=1)
         self._num_classes = num_classes
         self._features_name = features_name
@@ -261,6 +261,7 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         self._predicts_name = predicts_name
         self._all_labels = []
         self._all_predicts = []
+        self._summary_dir = summary_dir
 
     def begin(self):
         self._global_step_tensor = training_util._get_or_create_global_step_read()
@@ -335,8 +336,7 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         return Summary(value=[Summary.Value(tag=tag, image=image)])
 
     def end(self, session):
-        summary_dir = session._config.model_dir if session._config else None
-        summary_writer = tf.summary.FileWriterCache.get(summary_dir)
+        summary_writer = tf.summary.FileWriterCache.get(self._summary_dir)
 
         cnf_matrix = confusion_matrix(self._all_labels, self._all_predicts)
         summary = self.confusion_matrix_summary(self.confusion_matrix_summary('confusion_matrix', cnf_matrix, self._num_classes))
