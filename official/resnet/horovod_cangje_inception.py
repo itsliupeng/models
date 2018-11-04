@@ -248,8 +248,9 @@ def model_fn(features, labels, mode, params):
     lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
     lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
 
-    # l2_loss = weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in trainable_variables_without_bn])
-    l2_loss = tf.add_n(regularization_losses)
+    l2_loss = flags_obj.weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32))
+                                                 for v in trainable_variables_without_bn])
+    # l2_loss = tf.add_n(regularization_losses)
     loss = cross_entropy + aux_loss + l2_loss
 
     tf.identity(cross_entropy, name='cross_entropy')
@@ -425,8 +426,10 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
+    parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
 
     flags_obj = parser.parse_args()
+    lp_debug_rank0('flag_obj: {}'.format(flags_obj))
 
     # 299
     _DEFAULT_IMAGE_SIZE = nets_factory.get_network_fn(flags_obj.model_type).default_image_size
