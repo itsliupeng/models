@@ -399,13 +399,18 @@ def main(unused_argv):
 
             if hvd.rank() == 0:
                 lp_debug('begin evaluate')
-                eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[cm_hook])
+                val_hooks = []
+                if flags_obj.confusion_matrix:
+                    val_hooks.append(cm_hook)
+
+                eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=val_hooks)
                 lp_debug(eval_results)
                 lp_debug('end evaluate')
             else:
                 # should wait for rank0 to finish evaluating
                 lp_debug('begin to sleep')
-                time.sleep(60)
+                time.sleep(60 * 2)
+                lp_debug('end to sleep')
 
 
 if __name__ == "__main__":
@@ -426,6 +431,7 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
+    parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
 

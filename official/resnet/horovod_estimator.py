@@ -344,8 +344,6 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         summary = self.confusion_matrix_summary('confusion_matrix', cnf_matrix, classes)
         summary_writer.add_summary(summary, self._global_step)
 
-
-
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,
                              checkpoint_dir=None,
