@@ -337,8 +337,9 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
 
     def end(self, session):
         summary_writer = tf.summary.FileWriterCache.get(self._summary_dir)
-
-        cnf_matrix = confusion_matrix(self._all_labels, self._all_predicts)
+        all_labels_np = np.concatenate(self._all_labels)
+        all_predicts_np = np.concatenate(self._all_predicts)
+        cnf_matrix = confusion_matrix(all_labels_np, all_predicts_np)
         summary = self.confusion_matrix_summary(self.confusion_matrix_summary('confusion_matrix', cnf_matrix, self._num_classes))
         summary_writer.add_summary(summary, self._global_step)
 
