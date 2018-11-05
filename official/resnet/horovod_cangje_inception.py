@@ -236,19 +236,19 @@ def model_fn(features, labels, mode, params):
     else:
         aux_loss = tf.constant(0.0)
 
-    def exclude_batch_norm(name):
-        return 'batch_normalization' not in name and 'BatchNorm' not in name
+    def exclude_batch_norm_and_bias(name):
+        return 'batch_normalization' not in name and 'BatchNorm' not in name and 'biases' not in name
 
     trainable_variables = tf.trainable_variables()
-    trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm(v.name)]
+    trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm_and_bias(v.name)]
     global_variables = tf.global_variables()
 
     regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 
     lp_debug_rank0('global_variables {}'.format(len(global_variables)))
     lp_debug_rank0('trainable_variables {}'.format(len(trainable_variables)))
-    lp_debug_rank0('trainable_variables_without_bn size {} {}'.format(len(trainable_variables_without_bn), trainable_variables_without_bn))
-    lp_debug_rank0('regularization_losses size {} {}'.format(len(regularization_losses), regularization_losses))
+    lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
+    lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
 
     l2_loss = flags_obj.weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32))
                                                  for v in trainable_variables_without_bn])
