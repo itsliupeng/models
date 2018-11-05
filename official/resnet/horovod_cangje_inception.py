@@ -180,12 +180,14 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     return dataset
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0, test=False):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dtype=tf.float32, num_shards=1, shard_index=0, test=False, seed=None):
     filenames = get_filenames(is_training, data_dir, test=test)
-    dataset = tf.data.Dataset.from_tensor_slices(filenames).shard(num_shards, shard_index)
+    dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
     if is_training:
-        dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
+        dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES, seed=seed)
+
+    dataset = dataset.shard(num_shards, shard_index)
 
     # Convert to individual records.
     # cycle_length = 10 means 10 files will be read and deserialized in parallel.
@@ -245,8 +247,8 @@ def model_fn(features, labels, mode, params):
 
     lp_debug_rank0('global_variables {}'.format(len(global_variables)))
     lp_debug_rank0('trainable_variables {}'.format(len(trainable_variables)))
-    lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
-    lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
+    lp_debug_rank0('trainable_variables_without_bn size {} {}'.format(len(trainable_variables_without_bn), trainable_variables_without_bn))
+    lp_debug_rank0('regularization_losses size {} {}'.format(len(regularization_losses), regularization_losses))
 
     l2_loss = flags_obj.weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32))
                                                  for v in trainable_variables_without_bn])
@@ -311,6 +313,9 @@ def model_fn(features, labels, mode, params):
 def main(unused_argv):
     hvd.init()
     lp_debug_rank0('flag_obj: {}'.format(flags_obj))
+    from tensorflow.python.framework import ops
+    lp_debug('seed {} {}'.format(ops.get_default_graph().seed, ops.get_default_graph()._last_id))
+
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
     session_config = tf.ConfigProto(
         inter_op_parallelism_threads=8,
