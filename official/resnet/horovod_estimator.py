@@ -209,9 +209,12 @@ class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
             if self._total_batch_size:
                 img_per_sec_tag = 'eval/img_per_sec'
                 img_per_sec_tag_value = self._total_batch_size / (self._run_end - self._run_begin)
+                sec_per_img_tag = 'eval/sec_per_img'
+                sec_per_img_tag_value = 1 / img_per_sec_tag_value
                 summary = Summary(value=[Summary.Value(tag=img_per_sec_tag, simple_value=img_per_sec_tag_value),
-                                         Summary.Value(tag='eval/sec_per_img', simple_value=1/img_per_sec_tag_value)])
-                logging.info("%s: %g, step: %g", img_per_sec_tag, img_per_sec_tag_value, self._step)
+                                         Summary.Value(tag=sec_per_img_tag, simple_value=sec_per_img_tag_value)])
+                logging.info("%s: %g, %s: %g, step: %g",
+                             img_per_sec_tag, img_per_sec_tag_value, sec_per_img_tag, sec_per_img_tag_value, self._step)
                 self._summary_writer.add_summary(summary, self._step)
 
     def after_run(self, run_context, run_values):
