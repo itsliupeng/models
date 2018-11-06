@@ -464,7 +464,9 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         cnf_matrix = confusion_matrix(all_labels_np, all_predicts_np)
         classes = list(map(lambda x: str(x), range(0, self._num_classes)))
         summary = self.confusion_matrix_summary('confusion_matrix', cnf_matrix, classes)
+        summary_norm = self.confusion_matrix_summary('confusion_matrix_norm', cnf_matrix, classes)
         summary_writer.add_summary(summary, self._global_step)
+        summary_writer.add_summary(summary_norm, self._global_step)
 
 def MonitoredTrainingSession(master='',  # pylint: disable=invalid-name
                              is_chief=True,

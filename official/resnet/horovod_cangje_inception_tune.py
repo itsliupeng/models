@@ -413,7 +413,7 @@ def main(unused_argv):
             else:
                 # should wait for rank0 to finish evaluating
                 lp_debug('begin to sleep')
-                time.sleep(90)
+                time.sleep(60)
                 lp_debug('end to sleep')
 
 
