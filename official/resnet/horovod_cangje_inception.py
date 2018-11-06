@@ -361,9 +361,13 @@ def main(unused_argv):
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
 
     if flags_obj.evaluate:
+        val_hooks = [init_hooks]
+        if flags_obj.confusion_matrix:
+            val_hooks.append(cm_hook)
+
         if hvd.rank() == 0:
             lp_debug('begin evaluate')
-            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=[init_hooks, cm_hook])
+            eval_results = classifier.evaluate(input_fn=input_fn_eval, hooks=val_hooks)
             lp_debug(eval_results)
             lp_debug('end evaluate')
         else:
@@ -371,9 +375,13 @@ def main(unused_argv):
         return
 
     if flags_obj.test:
+        test_hooks = [init_hooks]
+        if flags_obj.confusion_matrix:
+            test_hooks.append(cm_hook)
+
         if hvd.rank() == 0:
             lp_debug('begin test')
-            eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=[init_hooks, cm_hook])
+            eval_results = classifier.evaluate(input_fn=input_fn_test, hooks=test_hooks)
             lp_debug(eval_results)
             lp_debug('end test')
         else:
