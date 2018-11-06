@@ -197,8 +197,7 @@ class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
         self._run_end = 0
 
     def begin(self):
-        if self._summary_writer is None and self._summary_dir:
-            self._summary_writer = tf.SummaryWriterCache.get(self._summary_dir)
+        self._summary_writer = tf.SummaryWriterCache.get(self._summary_dir)
 
     def before_run(self, run_context):
         self._run_begin = time.time()
