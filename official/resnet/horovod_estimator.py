@@ -185,7 +185,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 class VisualizationHook(basic_session_run_hooks.StepCounterHook):
     def __init__(self, features_name, labels_name, predicts_name, every_n_steps=100, every_n_secs=None, summary_dir=None):
-        super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, summary_dir)
+        super(VisualizationHook, self).__init__(every_n_steps, every_n_secs, summary_dir)
         self._features_name = features_name
         self._labels_name = labels_name
         self._predicts_name = predicts_name
