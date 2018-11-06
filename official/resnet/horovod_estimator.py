@@ -24,7 +24,6 @@ from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
-from tensorflow.python.training.summary_io import SummaryWriterCache
 import time
 
 import horovod.tensorflow as hvd
@@ -197,7 +196,7 @@ class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
         self._run_end = 0
 
     def begin(self):
-        self._summary_writer = tf.SummaryWriterCache.get(self._summary_dir)
+        self._summary_writer = tf.summary.FileWriterCache.get(self._summary_dir)
 
     def before_run(self, run_context):
         self._run_begin = time.time()
