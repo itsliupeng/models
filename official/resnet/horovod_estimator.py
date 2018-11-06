@@ -185,7 +185,7 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
 
 
 class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
-    def __init__(self, features_name, labels_name, predicts_name, every_n_steps=100, summary_dir=None):
+    def __init__(self, features_name, labels_name, predicts_name, every_n_steps=20, summary_dir=None):
         self._features_name = features_name
         self._labels_name = labels_name
         self._predicts_name = predicts_name
@@ -207,10 +207,11 @@ class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
     def _log_and_record(self):
         if self._summary_writer is not None:
             if self._total_batch_size:
-                image_tag = 'eval/images_sec'
-                image_count = self._total_batch_size / (self._run_end - self._run_begin)
-                summary = Summary(value=[Summary.Value(tag=image_tag, simple_value=image_count)])
-                logging.info("%s: %g, step: %g", image_tag, image_count, self._step)
+                img_per_sec_tag = 'eval/img_per_sec'
+                img_per_sec_tag_value = self._total_batch_size / (self._run_end - self._run_begin)
+                summary = Summary(value=[Summary.Value(tag=img_per_sec_tag, simple_value=img_per_sec_tag_value),
+                                         Summary.value(tag='eval/sec_per_img', simple_value=1/img_per_sec_tag_value)])
+                logging.info("%s: %g, step: %g", img_per_sec_tag, img_per_sec_tag_value, self._step)
                 self._summary_writer.add_summary(summary, self._step)
 
     def after_run(self, run_context, run_values):

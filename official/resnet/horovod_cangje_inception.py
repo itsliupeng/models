@@ -359,7 +359,7 @@ def main(unused_argv):
                                                       exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
-    visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=100)
+    visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=20)
 
     if flags_obj.evaluate:
         val_hooks = [init_hooks, visualization_hook]
