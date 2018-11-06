@@ -189,6 +189,7 @@ class VisualizationHook(basic_session_run_hooks.StepCounterHook):
         self._features_name = features_name
         self._labels_name = labels_name
         self._predicts_name = predicts_name
+        self._steps_per_run = 1
 
     def before_run(self, run_context):
         return SessionRunArgs({'features': basic_session_run_hooks._as_graph_element(self._features_name),
