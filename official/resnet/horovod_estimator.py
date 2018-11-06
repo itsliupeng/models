@@ -24,6 +24,8 @@ from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
+from tensorflow.python.training.summary_io import SummaryWriterCache
+import time
 
 import horovod.tensorflow as hvd
 
@@ -183,9 +185,54 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
             self._summary(avg_values, global_step)
 
 
-class VisualizationHook(basic_session_run_hooks.StepCounterHook):
+class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
+    def __init__(self, features_name, labels_name, predicts_name, every_n_steps=100, summary_dir=None):
+        self._features_name = features_name
+        self._labels_name = labels_name
+        self._predicts_name = predicts_name
+        self._every_n_steps = every_n_steps
+        self._summary_dir =summary_dir
+        self._step = 0
+        self._run_begin = 0
+        self._run_end = 0
+
+    def begin(self):
+        if self._summary_writer is None and self._summary_dir:
+            self._summary_writer = tf.SummaryWriterCache.get(self._summary_dir)
+
+    def before_run(self, run_context):
+        self._run_begin = time.time()
+        return SessionRunArgs({'features': basic_session_run_hooks._as_graph_element(self._features_name),
+                               'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
+                               'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name)})
+
+    def _log_and_record(self):
+        if self._summary_writer is not None:
+            if self._total_batch_size:
+                image_tag = 'eval/images_sec'
+                image_count = self._total_batch_size / (self._run_end - self._run_begin)
+                summary = Summary(value=[Summary.Value(tag=image_tag, simple_value=image_count)])
+                logging.info("%s: %g, step: %g", image_tag, image_count, self._step)
+                self._summary_writer.add_summary(summary, self._step)
+
+    def after_run(self, run_context, run_values):
+        _ = run_context
+
+        self._run_end = time.time()
+
+        features = run_values.results['features']
+        labels = run_values.results['labels']
+        self._total_batch_size = features.shape[0] * hvd.size()
+
+        if self._step % self._every_n_steps == 0:
+            self._log_and_record()
+
+        self._step += 1
+
+
+class TrainImageVisualizationHook(basic_session_run_hooks.StepCounterHook):
     def __init__(self, features_name, labels_name, predicts_name, every_n_steps=100, every_n_secs=None, summary_dir=None):
-        super(VisualizationHook, self).__init__(every_n_steps, every_n_secs, summary_dir)
+        super(EvalImageVisualizationHook, self).__init__(every_n_steps, every_n_secs, summary_dir)
         self._features_name = features_name
         self._labels_name = labels_name
         self._predicts_name = predicts_name
@@ -196,7 +243,6 @@ class VisualizationHook(basic_session_run_hooks.StepCounterHook):
                                'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
                                'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name),
                                'global_step': self._global_step_tensor})
-
 
     def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
         steps_per_sec = elapsed_steps / elapsed_time

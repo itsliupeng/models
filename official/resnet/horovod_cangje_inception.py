@@ -12,7 +12,7 @@ from official.resnet import imagenet_preprocessing
 from official.resnet.slim.nets import nets_factory
 from official.resnet import resnet_run_loop
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0,\
-    AllReduceTensorHook, ConfusionMatrixHook, VisualizationHook
+    AllReduceTensorHook, ConfusionMatrixHook, EvalImageVisualizationHook
 
 _NUM_IMAGES = {
     'train': 1281167,
@@ -359,7 +359,7 @@ def main(unused_argv):
                                                       exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
-    visualization_hook = VisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=100)
+    visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=100)
 
     if flags_obj.evaluate:
         val_hooks = [init_hooks, visualization_hook]
