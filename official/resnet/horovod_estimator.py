@@ -183,6 +183,79 @@ class AllReduceTensorHook(session_run_hook.SessionRunHook):
             self._summary(avg_values, global_step)
 
 
+class VisualizationHook(basic_session_run_hooks.StepCounterHook):
+    def __init__(self, features_name, labels_name, predicts_name, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
+        super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
+        self._features_name = features_name
+        self._labels_name = labels_name
+        self._predicts_name = predicts_name
+
+    def before_run(self, run_context):
+        return SessionRunArgs({'features': basic_session_run_hooks._as_graph_element(self._features_name),
+                               'labels': basic_session_run_hooks._as_graph_element(self._labels_name),
+                               'predicts': basic_session_run_hooks._as_graph_element(self._predicts_name),
+                               'global_step': self._global_step_tensor})
+
+
+    def _log_and_record(self, elapsed_steps, elapsed_time, global_step):
+        steps_per_sec = elapsed_steps / elapsed_time
+        if self._summary_writer is not None:
+            if self._total_batch_size:
+                image_tag = 'images_sec'
+                image_count = float(steps_per_sec) * self._total_batch_size
+                summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec),
+                                         Summary.Value(tag=image_tag, simple_value=image_count)])
+                logging.info("%s: %g, %s: %g, step: %g", self._summary_tag, steps_per_sec, image_tag, image_count, global_step)
+            else:
+                summary = Summary(value=[Summary.Value(tag=self._summary_tag, simple_value=steps_per_sec)])
+                logging.info("%s: %g, step: %g", self._summary_tag, steps_per_sec, global_step)
+
+            self._summary_writer.add_summary(summary, global_step)
+
+    def after_run(self, run_context, run_values):
+        _ = run_context
+
+        stale_global_step = run_values.results['global_step']
+        features = run_values.results['features']
+        labels = run_values.results['labels']
+
+        self._total_batch_size = features.shape[0] * hvd.size()
+
+        if self._timer.should_trigger_for_step(
+                stale_global_step + self._steps_per_run):
+            # get the real value after train op.
+            global_step = run_context.session.run(self._global_step_tensor)
+            if self._timer.should_trigger_for_step(global_step):
+                elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+                    global_step)
+                if elapsed_time is not None:
+                    self._log_and_record(elapsed_steps, elapsed_time, global_step)
+
+        # Check whether the global step has been increased. Here, we do not use the
+        # timer.last_triggered_step as the timer might record a different global
+        # step value such that the comparison could be unreliable. For simplicity,
+        # we just compare the stale_global_step with previously recorded version.
+        if stale_global_step == self._last_global_step:
+            # Here, we use a counter to count how many times we have observed that the
+            # global step has not been increased. For some Optimizers, the global step
+            # is not increased each time by design. For example, SyncReplicaOptimizer
+            # doesn't increase the global step in worker's main train step.
+            self._global_step_check_count += 1
+            if self._global_step_check_count % 20 == 0:
+                self._global_step_check_count = 0
+                logging.warning(
+                    "It seems that global step (tf.train.get_global_step) has not "
+                    "been increased. Current value (could be stable): %s vs previous "
+                    "value: %s. You could increase the global step by passing "
+                    "tf.train.get_global_step() to Optimizer.apply_gradients or "
+                    "Optimizer.minimize.", stale_global_step, self._last_global_step)
+        else:
+            # Whenever we observe the increment, reset the counter.
+            self._global_step_check_count = 0
+
+        self._last_global_step = stale_global_step
+
+
 class ImageCounterHook(basic_session_run_hooks.StepCounterHook):
     def __init__(self, features, labels, every_n_steps=100, every_n_secs=None, output_dir=None, summary_writer=None):
         super(ImageCounterHook, self).__init__(every_n_steps, every_n_secs, output_dir, summary_writer)
