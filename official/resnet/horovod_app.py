@@ -222,7 +222,7 @@ def model_fn_label_smoothing(features, labels, mode, params):
     predicts = tf.argmax(input=logits, axis=1)
 
     tf.identity(features, 'features')
-    tf.identity(hard_labels, 'labels')
+    tf.identity(labels, 'labels')
     tf.identity(predicts, 'predicts')
 
     predictions = {
@@ -418,7 +418,7 @@ def main(unused_argv):
     #     decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
-    classifier = HorovodEstimator(model_fn=model_fn, model_dir=model_dir,
+    classifier = HorovodEstimator(model_fn=model_fn_label_smoothing, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
 
@@ -440,7 +440,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1, test=True)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'rmse': 'rmse', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
