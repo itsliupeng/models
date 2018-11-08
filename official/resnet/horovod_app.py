@@ -237,7 +237,7 @@ def model_fn_label_smoothing(features, labels, mode, params):
     if 'AuxLogits' in end_points:
         aux_logits = end_points['AuxLogits']
         aux_logits = tf.cast(aux_logits, tf.float32)
-        aux_loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=aux_logits, weights=0.4)
+        aux_loss = tf.losses.softmax_cross_entropy(onehot_labels=hard_labels, logits=aux_logits, weights=0.4)
 
     else:
         aux_loss = tf.constant(0.0)
