@@ -324,10 +324,16 @@ def main(unused_argv):
     session_config.gpu_options.allow_growth = True
     session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-    learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-        batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-        num_images=flags_obj.num_images, boundary_epochs=[30, 60, 80, 90],
-        decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
+    total_steps = flags_obj.train_epochs * flags_obj.num_images // (flags_obj.batch_size * hvd.size())
+    base_lr = flags_obj.base_lr * (flags_obj.batch_size * hvd.size() / 256)
+
+    def learning_rate_fn(step):
+        return tf.train.cosine_decay(base_lr, step, total_steps)
+
+    # learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
+    #     batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
+    #     num_images=flags_obj.num_images, boundary_epochs=[30, 60, 80, 90],
+    #     decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
     classifier = HorovodEstimator(model_fn=model_fn, model_dir=model_dir,
@@ -440,7 +446,7 @@ if __name__ == "__main__":
     parser.add_argument('--continue_train_epoch', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
     parser.add_argument('--num_classes', help='', type=int, default=1001)
-    parser.add_argument('--base_lr', help='', type=float, default=0.128 * 0.6)
+    parser.add_argument('--base_lr', help='', type=float, default=0.1)
     parser.add_argument('--resize_min', help='', type=int, default=320)
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
