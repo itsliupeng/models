@@ -7,12 +7,12 @@ import os
 import time
 
 import tensorflow as tf
+
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
-from official.resnet.slim.nets import nets_factory
-from official.resnet import resnet_run_loop
-from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0,\
+from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
     AllReduceTensorHook, ConfusionMatrixHook, EvalImageVisualizationHook
+from official.resnet.slim.nets import nets_factory
 
 _NUM_IMAGES = {
     'train': 1281167,
@@ -324,11 +324,16 @@ def main(unused_argv):
     session_config.gpu_options.allow_growth = True
     session_config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-    total_steps = flags_obj.train_epochs * flags_obj.num_images // (flags_obj.batch_size * hvd.size())
-    base_lr = flags_obj.base_lr * (flags_obj.batch_size * hvd.size() / 256)
+    batches_per_epoch = flags_obj.num_images // (flags_obj.batch_size * hvd.size())
+    initial_lr = flags_obj.base_lr * (flags_obj.batch_size * hvd.size() / 256)
 
-    def learning_rate_fn(step):
-        return tf.train.cosine_decay(base_lr, step, total_steps)
+    def learning_rate_fn(global_step):
+        warmup_steps = int(batches_per_epoch * 5)
+        total_steps = flags_obj.train_epochs * batches_per_epoch
+        lr = tf.train.cosine_decay(initial_lr, global_step, total_steps - warmup_steps)
+        warmup_lr = initial_lr * tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32)
+        return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
+
 
     # learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
     #     batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
