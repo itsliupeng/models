@@ -402,7 +402,7 @@ if __name__ == "__main__":
     parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=1e-4)
-    parser.add_argument('--dtype', help='', type=float, default='fp32')
+    parser.add_argument('--dtype', help='', type=str, default='fp32')
 
     flags_obj = parser.parse_args()
 
