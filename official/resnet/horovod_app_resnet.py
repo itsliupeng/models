@@ -520,7 +520,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', help='', type=str, default='/home/liupeng/data/imagenet_tfrecord')
-    parser.add_argument('--model_type', help='', type=str, default='inception_v3')
+    parser.add_argument('--model_type', help='', type=str, default='resnet_v1_50')
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--batch_size', help='', type=int, default=256)
     parser.add_argument('--train_epochs', help='', type=int, default=120)
@@ -529,14 +529,14 @@ if __name__ == "__main__":
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
     parser.add_argument('--num_classes', help='', type=int, default=1001)
     parser.add_argument('--base_lr', help='', type=float, default=0.1)
-    parser.add_argument('--resize_min', help='', type=int, default=320)
+    parser.add_argument('--resize_min', help='', type=int, default=256)
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--label_smoothing', help='', action='store_true')
     parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
-    parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
+    parser.add_argument('--weight_decay', help='', type=float, default=1e-4)
 
     flags_obj = parser.parse_args()
 
