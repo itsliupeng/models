@@ -130,39 +130,39 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 
 
 def model_fn_label_smoothing(features, labels, mode, params):
-    dtype = params['dtype']
+    raw_features = tf.identity(features, 'features')
+    raw_labels =  tf.identity(labels, 'labels')
+    classes = flags_obj.num_classes
 
+    dtype = params['dtype']
     assert features.dtype == dtype
 
-    if flags_obj.label_smoothing:
-        lp_debug_rank0('using label smoothing')
-        eta = 0.1
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        if flags_obj.label_smoothing:
+            lp_debug_rank0('using label smoothing')
+            eta = 0.1
+        else:
+            eta = 0.0
+
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            if flags_obj.mixup:
+                lp_debug_rank0('using mixup')
+                alpha = 0.2
+                lam = np.random.beta(alpha, alpha)
+                features = lam * features + (1 - lam) * features[::-1]
+                y1 = tf.one_hot(labels, classes, on_value=1-eta + eta/classes, off_value=eta/classes)
+                y2 = tf.one_hot(labels[::-1], classes, on_value=1-eta + eta/classes, off_value=eta/classes)
+                labels = lam * y1 + (1 - lam) * y2
+            else:
+                labels = tf.one_hot(labels, classes, on_value=1-eta + eta/classes, off_value=eta/classes)
     else:
-        eta = 0.0
+        labels = tf.one_hot(labels, classes)
 
-    classes = flags_obj.num_classes
-    hard_labels = tf.one_hot(labels, classes)
-    if flags_obj.mixup:
-        lp_debug_rank0('using mixup')
-        alpha = 0.2
-        lam = np.random.beta(alpha, alpha)
-        features = lam * features + (1 - lam) * features[::-1]
-        y1 = tf.one_hot(labels, classes, on_value=1-eta + eta/classes, off_value =eta/classes)
-        y2 = tf.one_hot(labels[::-1], classes, on_value=1-eta + eta/classes, off_value =eta/classes)
-        smoothing_labels = lam * y1 + (1 - lam) * y2
-    else:
-        smoothing_labels = tf.one_hot(labels, flags_obj.num_classes, on_value=1 - eta + eta / classes, off_value =eta / classes)
-
-
-    model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_classes,
-                                        is_training=mode == tf.estimator.ModeKeys.TRAIN)
+    model = nets_factory.get_network_fn(flags_obj.model_type, classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
     logits, end_points = model(features)
+
     logits = tf.cast(logits, tf.float32)
-
     predicts = tf.argmax(input=logits, axis=1)
-
-    tf.identity(features, 'features')
-    tf.identity(labels, 'labels')
     tf.identity(predicts, 'predicts')
 
     predictions = {
@@ -172,12 +172,12 @@ def model_fn_label_smoothing(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-    cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=smoothing_labels, logits=logits, weights=1.0)
+    cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits, weights=1.0)
 
     if 'AuxLogits' in end_points:
         aux_logits = end_points['AuxLogits']
         aux_logits = tf.cast(aux_logits, tf.float32)
-        aux_loss = tf.losses.softmax_cross_entropy(onehot_labels=smoothing_labels, logits=aux_logits, weights=0.4)
+        aux_loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=aux_logits, weights=0.4)
 
     else:
         aux_loss = tf.constant(0.0)
@@ -205,9 +205,9 @@ def model_fn_label_smoothing(features, labels, mode, params):
     tf.identity(l2_loss, 'l2_loss')
     tf.identity(loss, name='loss')
 
-    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
-    rmse = tf.metrics.root_mean_squared_error(labels=hard_labels, predictions=logits)
+    accuracy = tf.metrics.accuracy(raw_labels, predictions['classes'])
+    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=raw_labels, k=5, name='top_5_op'))
+    rmse = tf.metrics.root_mean_squared_error(labels=labels, predictions=tf.nn.softmax(logits))
 
     tf.identity(accuracy[1], name='train_accuracy')
     tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
