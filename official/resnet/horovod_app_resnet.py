@@ -7,6 +7,7 @@ import os
 import time
 
 import tensorflow as tf
+import numpy as np
 
 import horovod.tensorflow as hvd
 from official.resnet import imagenet_preprocessing
@@ -209,10 +210,25 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 
 
 def model_fn_label_smoothing(features, labels, mode, params):
+    if flags_obj.label_smoothing:
+        lp_debug_rank0('using label smoothing')
+        eta = 0.1
+    else:
+        eta = 0.0
+
     classes = flags_obj.num_classes
     hard_labels = tf.one_hot(labels, classes)
-    eta = 0.1
-    smoothing_labels = tf.one_hot(labels, flags_obj.num_classes, on_value=1 - eta + eta / classes, off_value =eta / classes)
+    if flags_obj.mixup:
+        lp_debug_rank0('using mixup')
+        alpha = 0.2
+        lam = np.random.beta(alpha, alpha)
+        features = lam * features + (1 - lam) * features[::-1]
+        y1 = tf.one_hot(labels, classes, on_value=1-eta + eta/classes, off_value =eta/classes)
+        y2 = tf.one_hot(labels[::-1], classes, on_value=1-eta + eta/classes, off_value =eta/classes)
+        smoothing_labels = lam * y1 + (1 - lam) * y2
+    else:
+        smoothing_labels = tf.one_hot(labels, flags_obj.num_classes, on_value=1 - eta + eta / classes, off_value =eta / classes)
+
 
     model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_classes,
                                         is_training=mode == tf.estimator.ModeKeys.TRAIN)
@@ -534,6 +550,7 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--label_smoothing', help='', action='store_true')
+    parser.add_argument('--mixup', help='', action='store_true')
     parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=1e-4)
