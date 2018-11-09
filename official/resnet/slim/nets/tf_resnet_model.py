@@ -355,7 +355,8 @@ class Model(object):
                  conv_stride, first_pool_size, first_pool_stride,
                  block_sizes, block_strides,
                  resnet_version=DEFAULT_VERSION, data_format=None,
-                 dtype=DEFAULT_DTYPE):
+                 dtype=DEFAULT_DTYPE,
+                 is_training=False):
         """Creates a model for classifying an image.
     
         Args:
@@ -423,6 +424,7 @@ class Model(object):
         self.block_strides = block_strides
         self.dtype = dtype
         self.pre_activation = resnet_version == 2
+        self.is_training = is_training
 
     def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
                              *args, **kwargs):
@@ -478,7 +480,7 @@ class Model(object):
         return tf.variable_scope('resnet_model',
                                  custom_getter=self._custom_dtype_getter)
 
-    def __call__(self, inputs, training):
+    def __call__(self, inputs):
         """Add operations to classify a batch of input images.
     
         Args:
@@ -489,6 +491,8 @@ class Model(object):
         Returns:
           A logits Tensor with shape [<batch_size>, self.num_classes].
         """
+
+        training = self.is_training
 
         with self._model_variable_scope():
             if self.data_format == 'channels_first':
@@ -596,7 +600,7 @@ def _get_block_sizes(resnet_size):
 class ImagenetModel(Model):
     """Model class with appropriate defaults for Imagenet data."""
 
-    def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+    def __init__(self, is_training, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
                  resnet_version=DEFAULT_VERSION,
                  dtype=DEFAULT_DTYPE):
         """These are the parameters that work for Imagenet data.
@@ -631,5 +635,7 @@ class ImagenetModel(Model):
             block_strides=[1, 2, 2, 2],
             resnet_version=resnet_version,
             data_format=data_format,
-            dtype=dtype
+            dtype=dtype,
+            is_training=is_training
         )
+
