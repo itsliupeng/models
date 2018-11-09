@@ -161,7 +161,7 @@ def model_fn_label_smoothing(features, labels, mode, params):
     # model = nets_factory.get_network_fn(flags_obj.model_type, classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
 
     model = tf_resnet_model.ImagenetModel(mode == tf.estimator.ModeKeys.TRAIN, 50, num_classes=classes, resnet_version=1, dtype=dtype)
-    logits, end_points = model(features)
+    logits = model(features)
 
     logits = tf.cast(logits, tf.float32)
     predicts = tf.argmax(input=logits, axis=1)
@@ -175,14 +175,7 @@ def model_fn_label_smoothing(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits, weights=1.0)
-
-    if 'AuxLogits' in end_points:
-        aux_logits = end_points['AuxLogits']
-        aux_logits = tf.cast(aux_logits, tf.float32)
-        aux_loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=aux_logits, weights=0.4)
-
-    else:
-        aux_loss = tf.constant(0.0)
+    aux_loss = tf.constant(0.0)
 
     def exclude_batch_norm_and_bias(name):
         return 'batch_normalization' not in name and 'BatchNorm' not in name and 'biases' not in name
