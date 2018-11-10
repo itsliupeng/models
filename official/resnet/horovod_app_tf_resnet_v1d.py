@@ -160,7 +160,7 @@ def model_fn_label_smoothing(features, labels, mode, params):
 
     # model = nets_factory.get_network_fn(flags_obj.model_type, classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
 
-    model = tf_resnet_v1d_model.ImagenetModel(mode == tf.estimator.ModeKeys.TRAIN, 50, num_classes=classes, resnet_version=1, dtype=dtype)
+    model = tf_resnet_v1d_model.ImagenetModel(mode == tf.estimator.ModeKeys.TRAIN, 50, num_classes=classes, resnet_version=1, dtype=dtype, data_format=flags_obj.data_format)
     logits = model(features)
 
     logits = tf.cast(logits, tf.float32)
@@ -398,6 +398,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=1e-4)
     parser.add_argument('--dtype', help='', type=str, default='fp32')
+    parser.add_argument('--data_format', help='', type=str, default='channel_first')
 
     flags_obj = parser.parse_args()
 
