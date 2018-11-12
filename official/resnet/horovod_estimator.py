@@ -24,6 +24,7 @@ from tensorflow.python.training import training_util
 from tensorflow.python.training import warm_starting_util
 from tensorflow.python.training.monitored_session import USE_DEFAULT, Scaffold, MonitoredSession, ChiefSessionCreator
 from tensorflow.python.training.session_run_hook import SessionRunArgs
+from tensorflow.python import pywrap_tensorflow
 import time
 
 import horovod.tensorflow as hvd
@@ -89,7 +90,11 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
             # exclusions = nets_factory.exclusion_for_training['inception_v3']
 
             variables_to_restore = []
-            for var in tf.model_variables():
+
+            reader = pywrap_tensorflow.NewCheckpointReader(self._pretrained_model_path)
+            var_to_shape_map = sorted(reader.get_variable_to_shape_map())
+
+            for var in var_to_shape_map:
                 excluded = False
                 for exclusion in self._exclusions:
                     if var.op.name.startswith(exclusion):
