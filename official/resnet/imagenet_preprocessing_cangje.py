@@ -48,7 +48,7 @@ _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 _RESIZE_MIN = 256
 
 
-def _decode_crop_and_flip(image, bbox):
+def _crop_and_flip(image, bbox):
     sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
         tf.shape(image),
         bounding_boxes=bbox,
@@ -218,7 +218,10 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     image = tf.image.decode_jpeg(image_buffer, channels=num_channels)
     if is_training:
         # For training, we want to randomize some of the distortions.
-        image = _decode_crop_and_flip(image_buffer, bbox)
+        if bbox.shape[0] == 0:
+            bbox = tf.reshape(bbox, [1, 0, 4])
+
+        image = _crop_and_flip(image_buffer, bbox)
         image = _resize_image(image, output_height, output_width)
     else:
         # For validation, we want to decode, resize, then just crop the middle.
