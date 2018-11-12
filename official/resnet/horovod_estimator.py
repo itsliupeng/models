@@ -94,14 +94,15 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
             reader = pywrap_tensorflow.NewCheckpointReader(self._pretrained_model_path)
             var_to_shape_map = sorted(reader.get_variable_to_shape_map())
 
-            for var in var_to_shape_map:
-                excluded = False
-                for exclusion in self._exclusions:
-                    if var.op.name.startswith(exclusion):
-                        excluded = True
-                        break
-                if not excluded:
-                    variables_to_restore.append(var)
+            for var in tf.global_variables():
+                if var.op.name in var_to_shape_map:
+                    excluded = False
+                    for exclusion in self._exclusions:
+                        if var.op.name.startswith(exclusion):
+                            excluded = True
+                            break
+                    if not excluded:
+                        variables_to_restore.append(var)
 
             lp_debug('model_variables len {}, restore len {}'.format(len(tf.model_variables()), len(variables_to_restore)))
             self._saver = tf.train.Saver(var_list=variables_to_restore)
