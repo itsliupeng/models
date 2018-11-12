@@ -94,6 +94,9 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
             reader = pywrap_tensorflow.NewCheckpointReader(self._pretrained_model_path)
             var_to_shape_map = sorted(reader.get_variable_to_shape_map())
 
+            # tmp
+            self._exclusions.append('resnet_model/dense')
+
             for var in tf.global_variables():
                 if var.op.name in var_to_shape_map:
                     excluded = False
