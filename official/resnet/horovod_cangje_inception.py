@@ -372,7 +372,7 @@ def main(unused_argv):
             batch_size=flags_obj.batch_size,
             num_epochs=1, test=True)
 
-    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
+    tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss', 'rmse': 'rmse'}
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
     init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
