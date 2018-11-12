@@ -118,12 +118,6 @@ def parse_record(raw_record, is_training, dtype):
     """
     image_buffer, label, bbox = _parse_example_proto(raw_record)
 
-    try:
-        tf.image.decode_jpeg(image_buffer)
-    except:
-        image_png = tf.image.decode_png(image_buffer, channels=3)
-        image_buffer = tf.image.encode_jpeg(image_png, format='rgb', quality=100)
-
     image = imagenet_preprocessing.preprocess_image(
         image_buffer=image_buffer,
         bbox=bbox,
