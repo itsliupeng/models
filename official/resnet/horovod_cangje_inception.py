@@ -347,10 +347,12 @@ def main(unused_argv):
         warmup_lr = initial_lr * tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32)
         return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
+    DTYPE_MAP = {'fp16': tf.float16, 'fp32': tf.float32 }
+    dtype = DTYPE_MAP[flags_obj.dtype]
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
     classifier = HorovodEstimator(model_fn=model_fn_label_smoothing, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
-                                  params={'learning_rate_fn': learning_rate_fn})
+                                  params={'learning_rate_fn': learning_rate_fn,  'dtype': dtype})
 
     def input_fn_train(num_epochs):
         return input_fn(
@@ -468,6 +470,8 @@ if __name__ == "__main__":
     parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
+    parser.add_argument('--dtype', help='', type=str, default='fp32')
+    parser.add_argument('--data_format', help='', type=str, default='channels_last')
 
     flags_obj = parser.parse_args()
 
