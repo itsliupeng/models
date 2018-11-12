@@ -473,8 +473,8 @@ class ConfusionMatrixHook(basic_session_run_hooks.SecondOrStepTimer, tf.train.Se
         all_predicts_np = np.concatenate(self._all_predicts)
         cnf_matrix = confusion_matrix(all_labels_np, all_predicts_np)
         classes = list(map(lambda x: str(x), range(0, self._num_classes)))
-        summary = self.confusion_matrix_summary('confusion_matrix', cnf_matrix, classes)
-        summary_norm = self.confusion_matrix_summary('confusion_matrix_norm', cnf_matrix, classes)
+        summary = self.confusion_matrix_summary('confusion_matrix', cnf_matrix, classes, normalize=False)
+        summary_norm = self.confusion_matrix_summary('confusion_matrix_norm', cnf_matrix, classes, normalize=True)
         summary_writer.add_summary(summary, self._global_step)
         summary_writer.add_summary(summary_norm, self._global_step)
 
