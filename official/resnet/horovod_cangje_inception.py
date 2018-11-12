@@ -10,7 +10,7 @@ import tensorflow as tf
 import numpy as np
 
 import horovod.tensorflow as hvd
-from official.resnet import imagenet_preprocessing
+from official.resnet import imagenet_preprocessing_cangje
 from official.resnet.horovod_estimator import HorovodEstimator, lp_debug, BroadcastGlobalVariablesHook, lp_debug_rank0, \
     AllReduceTensorHook, ConfusionMatrixHook, EvalImageVisualizationHook
 from official.resnet.slim.nets import nets_factory
@@ -119,7 +119,7 @@ def parse_record(raw_record, is_training, dtype):
     """
     image_buffer, label, bbox = _parse_example_proto(raw_record)
 
-    image = imagenet_preprocessing.preprocess_image(
+    image = imagenet_preprocessing_cangje.preprocess_image(
         image_buffer=image_buffer,
         bbox=bbox,
         output_height=_DEFAULT_IMAGE_SIZE,
