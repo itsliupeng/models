@@ -217,11 +217,7 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
 
     image = tf.image.decode_jpeg(image_buffer, channels=num_channels)
     if is_training:
-        # For training, we want to randomize some of the distortions.
-        if bbox.shape[0] == 0:
-            bbox = tf.reshape(bbox, [0, 0, 4])
-
-        image = _crop_and_flip(image_buffer, bbox)
+        image = _crop_and_flip(image, bbox)
         image = _resize_image(image, output_height, output_width)
     else:
         # For validation, we want to decode, resize, then just crop the middle.
