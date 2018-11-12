@@ -322,91 +322,6 @@ def model_fn_label_smoothing(features, labels, mode, params):
         metrics = {'val_accuracy': accuracy, 'val_accuracy_top_5': accuracy_top_5}
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
 
-def model_fn(features, labels, mode, params):
-    model = nets_factory.get_network_fn(flags_obj.model_type, flags_obj.num_classes, is_training=mode == tf.estimator.ModeKeys.TRAIN)
-    logits, end_points = model(features)
-    logits = tf.cast(logits, tf.float32)
-
-    predicts = tf.argmax(input=logits, axis=1)
-
-    tf.identity(features, 'features')
-    tf.identity(labels, 'labels')
-    tf.identity(predicts, 'predicts')
-
-    predictions = {
-        "classes": tf.argmax(input=logits, axis=1),
-        "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-    }
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
-
-    cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels, weights=1.0)
-
-    if 'AuxLogits' in end_points:
-        aux_logits = end_points['AuxLogits']
-        aux_logits = tf.cast(aux_logits, tf.float32)
-        aux_loss = tf.losses.sparse_softmax_cross_entropy(logits=aux_logits, labels=labels, weights=0.4)
-
-    else:
-        aux_loss = tf.constant(0.0)
-
-    def exclude_batch_norm_and_bias(name):
-        return 'batch_normalization' not in name and 'BatchNorm' not in name and 'biases' not in name
-
-    trainable_variables = tf.trainable_variables()
-    trainable_variables_without_bn = [v for  v in tf.trainable_variables() if exclude_batch_norm_and_bias(v.name)]
-    global_variables = tf.global_variables()
-
-    regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-
-    lp_debug_rank0('global_variables {}'.format(len(global_variables)))
-    lp_debug_rank0('trainable_variables {}'.format(len(trainable_variables)))
-    lp_debug_rank0('trainable_variables_without_bn size {}'.format(len(trainable_variables_without_bn)))
-    lp_debug_rank0('regularization_losses size {}'.format(len(regularization_losses)))
-
-    l2_loss = flags_obj.weight_decay * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32))
-                                                 for v in trainable_variables_without_bn])
-    loss = cross_entropy + aux_loss + l2_loss
-
-    tf.identity(cross_entropy, name='cross_entropy')
-    tf.identity(aux_loss, name='aux_loss')
-    tf.identity(l2_loss, 'l2_loss')
-    tf.identity(loss, name='loss')
-
-    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
-    accuracy_top_5 = tf.metrics.mean(tf.nn.in_top_k(predictions=logits, targets=labels, k=5, name='top_5_op'))
-
-    tf.identity(accuracy[1], name='train_accuracy')
-    tf.identity(accuracy_top_5[1], name='train_accuracy_top_5')
-
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        global_step = tf.train.get_or_create_global_step()
-
-        learning_rate = params['learning_rate_fn'](global_step)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
-        optimizer = hvd.DistributedOptimizer(optimizer)
-
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            avg_grad_vars = optimizer.compute_gradients(loss)
-            minimize_op = optimizer.apply_gradients(avg_grad_vars, global_step)
-
-        train_op = tf.group(minimize_op, update_ops)
-
-        tf.identity(learning_rate, name='learning_rate')
-        lp_debug_rank0('update_ops size {}'.format(len(update_ops)))
-
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
-    else:
-        if hvd.rank() == 0:
-            tf.identity(accuracy[1], name='eval_accuracy')
-            tf.identity(accuracy_top_5[1], name='eval_accuracy_top_5')
-            tf.summary.scalar('eval_accuracy', accuracy[1])
-            tf.summary.scalar('eval_accuracy_top_5', accuracy_top_5[1])
-
-        metrics = {'val_accuracy': accuracy, 'val_accuracy_top_5': accuracy_top_5}
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, loss=loss, eval_metric_ops=metrics)
-
 
 def main(unused_argv):
     hvd.init()
@@ -433,7 +348,7 @@ def main(unused_argv):
         return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
     model_dir = flags_obj.model_dir if hvd.rank() == 0 else None
-    classifier = HorovodEstimator(model_fn=model_fn, model_dir=model_dir,
+    classifier = HorovodEstimator(model_fn=model_fn_label_smoothing, model_dir=model_dir,
                                   config=tf.estimator.RunConfig(session_config=session_config, save_checkpoints_steps=flags_obj.save_checkpoints_steps),
                                   params={'learning_rate_fn': learning_rate_fn})
 
@@ -549,6 +464,7 @@ if __name__ == "__main__":
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
     parser.add_argument('--label_smoothing', help='', action='store_true')
+    parser.add_argument('--mixup', help='', action='store_true')
     parser.add_argument('--confusion_matrix', help='', action='store_true')
     parser.add_argument('--num_images', help='', type=int, default=1281167)
     parser.add_argument('--weight_decay', help='', type=float, default=0.00004)
