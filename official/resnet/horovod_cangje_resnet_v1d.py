@@ -261,12 +261,6 @@ def main(unused_argv):
         warmup_lr = initial_lr * tf.cast(global_step, tf.float32) / tf.cast(warmup_steps, tf.float32)
         return tf.cond(global_step < warmup_steps, lambda: warmup_lr, lambda: lr)
 
-
-    # learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-    #     batch_size=flags_obj.batch_size * hvd.size(), batch_denom=256,
-    #     num_images=flags_obj.num_images, boundary_epochs=[30, 60, 80, 90],
-    #     decay_rates=[1, 0.1, 0.01, 0.001, 1e-4], warmup=True, base_lr=flags_obj.base_lr)
-
     DTYPE_MAP = {'fp16': tf.float16, 'fp32': tf.float32 }
     dtype = DTYPE_MAP[flags_obj.dtype]
 
@@ -302,7 +296,7 @@ def main(unused_argv):
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'rmse': 'rmse', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
-    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path, exclusions=None)
+    init_restore_hooks = BroadcastGlobalVariablesHook(0, pretrained_model_path=flags_obj.pretrained_model_path, fine_tune=flags_obj.fine_tune, exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
 
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
     visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=20)
@@ -381,7 +375,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_type', help='', type=str, default='resnet_v1_50')
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--batch_size', help='', type=int, default=256)
-    parser.add_argument('--train_epochs', help='', type=int, default=120)
+    parser.add_argument('--train_epochs', help='', type=int, default=200)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--continue_train_epoch', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
@@ -391,6 +385,7 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
+    parser.add_argument('--fine_tune', help='', action='store_true')
     parser.add_argument('--label_smoothing', help='', action='store_true')
     parser.add_argument('--mixup', help='', action='store_true')
     parser.add_argument('--confusion_matrix', help='', action='store_true')

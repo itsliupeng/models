@@ -62,7 +62,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
     training is started with random weights or restored from a checkpoint.
     """
 
-    def __init__(self, root_rank, pretrained_model_path=None, exclusions=[], device=''):
+    def __init__(self, root_rank, pretrained_model_path=None, exclusions=[], device='', fine_tune=True):
         """Construct a new BroadcastGlobalVariablesHook that will broadcast all
         global variables from root rank to all other processes during initialization.
 
@@ -80,6 +80,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
         self._pretrained_model_path = pretrained_model_path
         self._saver = None
         self._exclusions = exclusions
+        self._fine_tune = fine_tune
 
     def begin(self):
         if not self.bcast_op or self.bcast_op.graph != tf.get_default_graph():
@@ -94,11 +95,10 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
             reader = pywrap_tensorflow.NewCheckpointReader(self._pretrained_model_path)
             var_to_shape_map = sorted(reader.get_variable_to_shape_map())
 
-            # None will no excluee any variables except global_step
-            if self._exclusions is None:
+            if self._fine_tune:
                 self._exclusions = ['global_step']
+
             else:
-                # tmp
                 self._exclusions.append('resnet_model/dense')
                 self._exclusions.append('global_step')
 
@@ -112,7 +112,7 @@ class BroadcastGlobalVariablesHook(tf.train.SessionRunHook):
                     if not excluded:
                         variables_to_restore.append(var)
 
-            lp_debug('model_variables len {}, restore len {}'.format(len(tf.model_variables()), len(variables_to_restore)))
+            lp_debug('restore len {}'.format(len(variables_to_restore)))
             self._saver = tf.train.Saver(var_list=variables_to_restore)
 
     def after_create_session(self, session, coord):

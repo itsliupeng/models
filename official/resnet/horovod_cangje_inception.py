@@ -375,8 +375,10 @@ def main(unused_argv):
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss', 'rmse': 'rmse'}
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
-    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
-                                                      exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
+    init_restore_hooks = BroadcastGlobalVariablesHook(0, pretrained_model_path=flags_obj.pretrained_model_path,
+                                                      fine_tune=flags_obj.fine_tune,
+                                                      exclusions=nets_factory.exclusion_for_training[
+                                                          flags_obj.model_type])
 
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
     visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=20)
@@ -455,7 +457,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_type', help='', type=str, default='inception_v3')
     parser.add_argument('--model_dir', help='', type=str, default='model_dir')
     parser.add_argument('--batch_size', help='', type=int, default=256)
-    parser.add_argument('--train_epochs', help='', type=int, default=100)
+    parser.add_argument('--train_epochs', help='', type=int, default=200)
     parser.add_argument('--epochs_between_evals', help='', type=int, default=1)
     parser.add_argument('--continue_train_epoch', help='', type=int, default=1)
     parser.add_argument('--save_checkpoints_steps', help='', type=int, default=1200)
@@ -465,6 +467,7 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_model_path', help='', type=str)
     parser.add_argument('--evaluate', help='', action='store_true')
     parser.add_argument('--test', help='', action='store_true')
+    parser.add_argument('--fine_tune', help='', action='store_true')
     parser.add_argument('--label_smoothing', help='', action='store_true')
     parser.add_argument('--mixup', help='', action='store_true')
     parser.add_argument('--confusion_matrix', help='', action='store_true')
