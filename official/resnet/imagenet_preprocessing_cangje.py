@@ -43,6 +43,12 @@ _G_MEAN = 116.78
 _B_MEAN = 103.94
 _CHANNEL_MEANS = [_R_MEAN, _G_MEAN, _B_MEAN]
 
+mean_rgb = [123.68, 116.779, 103.939]
+std_rgb = [58.393, 57.12, 57.375]
+
+mean_rgb_fp = [0.485, 0.456, 0.406]
+std_rgb_fp = [0.229, 0.224, 0.225]
+
 # The lower bound for the smallest side of the image for aspect-preserving
 # resizing. For example, if an image is 500 x 1000, it will be resized to
 # _RESIZE_MIN x (_RESIZE_MIN * 2).
@@ -121,6 +127,40 @@ def _mean_image_subtraction(image, means, num_channels):
     means = tf.expand_dims(tf.expand_dims(means, 0), 0)
 
     return image - means
+
+
+def _std_image_division(image, divisions, num_channels):
+    """Subtracts the given means from each image channel.
+
+    For example:
+      means = [123.68, 116.779, 103.939]
+      image = _mean_image_subtraction(image, means)
+
+    Note that the rank of `image` must be known.
+
+    Args:
+      image: a tensor of size [height, width, C].
+      means: a C-vector of values to subtract from each channel.
+      num_channels: number of color channels in the image that will be distorted.
+
+    Returns:
+      the centered image.
+
+    Raises:
+      ValueError: If the rank of `image` is unknown, if `image` has a rank other
+        than three or if the number of channels in `image` doesn't match the
+        number of values in `means`.
+    """
+    if image.get_shape().ndims != 3:
+        raise ValueError('Input must be of size [height, width, C>0]')
+
+    if len(divisions) != num_channels:
+        raise ValueError('len(means) must match the number of channels')
+
+    # We have a 1-D tensor of means; convert to 3-D.
+    divisions = tf.expand_dims(tf.expand_dims(divisions, 0), 0)
+
+    return image  / divisions
 
 
 def _smallest_size_at_least(height, width, resize_min):
@@ -292,7 +332,9 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     """
 
     image = tf.image.decode_jpeg(image_buffer, channels=num_channels)
+    # unint8 to float32
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
     if is_training:
         image = _crop_and_flip(image, bbox)
         image = _resize_image(image, output_height, output_width)
@@ -306,4 +348,7 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
 
     image.set_shape([output_height, output_width, num_channels])
 
-    return _mean_image_subtraction(image, _CHANNEL_MEANS, num_channels)
+    image = _mean_image_subtraction(image, mean_rgb_fp, num_channels)
+    image = _std_image_division(image, std_rgb_fp, num_channels)
+
+    return image
