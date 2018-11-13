@@ -337,9 +337,9 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
     if is_training:
         image = _crop_and_flip(image, bbox)
         image = _resize_image(image, output_height, output_width)
-        image = apply_with_random_selector(image,
-            lambda x, ordering: distort_color(x, ordering, fast_mode=True),
-            num_cases=4)
+        # image = apply_with_random_selector(image,
+        #     lambda x, ordering: distort_color(x, ordering, fast_mode=True),
+        #     num_cases=4)
     else:
         # For validation, we want to decode, resize, then just crop the middle.
         image = _aspect_preserving_resize(image, resize_min)
