@@ -347,7 +347,10 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
 
     image.set_shape([output_height, output_width, num_channels])
 
-    image = _mean_image_subtraction(image, mean_rgb_fp, num_channels)
-    image = _std_image_division(image, std_rgb_fp, num_channels)
+    # image = _mean_image_subtraction(image, mean_rgb_fp, num_channels)
+    # image = _std_image_division(image, std_rgb_fp, num_channels)
+
+    image = tf.subtract(image, 0.5)
+    image = tf.multiply(image, 2.0)
 
     return image
