@@ -210,7 +210,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None, dty
 
 
 def model_fn_label_smoothing(features, labels, mode, params):
-    tf.summary.image('features ', features, max_outputs=8)
+    tf.summary.image('features', features, max_outputs=8)
 
     raw_features = tf.identity(features, 'features')
     raw_labels =  tf.identity(labels, 'labels')
