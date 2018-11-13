@@ -237,6 +237,7 @@ class EvalImageVisualizationHook(session_run_hook.SessionRunHook):
         self._run_end = time.time()
 
         features = run_values.results['features']
+        tf.logging.info(features)
         labels = run_values.results['labels']
         self._total_batch_size = features.shape[0] * hvd.size()
 
