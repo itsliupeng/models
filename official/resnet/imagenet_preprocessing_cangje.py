@@ -291,11 +291,13 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
 
     image = tf.image.decode_jpeg(image_buffer, channels=num_channels)
     if is_training:
+        tf.summary.image('raw', tf.expand_dims(image, 0))
         image = _crop_and_flip(image, bbox)
         image = _resize_image(image, output_height, output_width)
         image = apply_with_random_selector(image,
             lambda x, ordering: distort_color(x, ordering, fast_mode=False),
             num_cases=4)
+        tf.summary.image('trans', tf.expand_dims(image, 0))
     else:
         # For validation, we want to decode, resize, then just crop the middle.
         image = _aspect_preserving_resize(image, resize_min)
