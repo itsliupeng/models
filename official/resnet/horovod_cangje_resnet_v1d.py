@@ -302,8 +302,7 @@ def main(unused_argv):
     tensors_to_log = {"top1": 'train_accuracy', 'top5': 'train_accuracy_top_5', 'rmse': 'rmse', 'lr': 'learning_rate', 'loss': 'loss', 'l2_loss': 'l2_loss', 'cross_entropy': 'cross_entropy', 'aux_loss': 'aux_loss'}
     all_reduce_hook = AllReduceTensorHook(tensors_to_log, model_dir)
     init_hooks = BroadcastGlobalVariablesHook(0)
-    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path,
-                                                      exclusions=nets_factory.exclusion_for_training[flags_obj.model_type])
+    init_restore_hooks = BroadcastGlobalVariablesHook(0,  pretrained_model_path=flags_obj.pretrained_model_path, exclusions=None)
 
     cm_hook = ConfusionMatrixHook(flags_obj.num_classes, 'features', 'labels', 'predicts', summary_dir=model_dir)
     visualization_hook = EvalImageVisualizationHook('features', 'labels', 'predicts', summary_dir=model_dir, every_n_steps=20)
